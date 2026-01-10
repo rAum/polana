@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Hello Index</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;600&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --bg1:#0b0b0d;
+            --bg2:#131217;
+            --gold:#c9a24a;
+            --accent:#8b0f0f;
+            --muted:#bdbdbd;
+            --card:#0f0f10;
+            --glass: rgba(255,255,255,0.03);
+        }
+
+        html,body{height:100%}
+        body{
+            margin:0;
+            font-family: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            background:
+                radial-gradient(1200px 600px at 10% 10%, rgba(139,15,15,0.08), transparent 8%),
+                linear-gradient(180deg,var(--bg1) 0%, var(--bg2) 100%);
+            color:var(--muted);
+            -webkit-font-smoothing:antialiased;
+            -moz-osx-font-smoothing:grayscale;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:3rem;
+            overflow:hidden;
+        }
+
+        /* subtle grain */
+        body::before{
+            content:"";
+            position:fixed;
+            inset:0;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><rect width="100%" height="100%" fill="none"/><g fill="%23ffffff" fill-opacity="0.02"><circle cx="10" cy="10" r="1"/><circle cx="50" cy="80" r="1"/><circle cx="120" cy="40" r="1"/></g></svg>');
+            background-repeat:repeat;
+            pointer-events:none;
+            mix-blend-mode:overlay;
+        }
+
+        .stage{
+            width:100%;
+            max-width:1000px;
+            display:grid;
+            grid-template-columns: 1fr 380px;
+            gap:2rem;
+            align-items:start;
+        }
+
+        /* Main panel */
+        .panel{
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+            border:1px solid rgba(255,255,255,0.03);
+            padding:2.2rem;
+            border-radius:12px;
+            box-shadow: 0 10px 30px rgba(2,2,2,0.7), inset 0 1px 0 rgba(255,255,255,0.02);
+            position:relative;
+            overflow:hidden;
+        }
+
+        .sigil{
+            position:absolute;
+            right:-70px;
+            top:-60px;
+            width:320px;
+            height:320px;
+            opacity:0.06;
+            transform:rotate(-15deg);
+            filter: blur(1px);
+            background:
+                radial-gradient(circle at 50% 30%, rgba(201,162,74,0.12), transparent 18%),
+                repeating-conic-gradient(from 0deg, rgba(201,162,74,0.02) 0 6deg, transparent 6deg 12deg);
+            border-radius:30%;
+            clip-path:path('M50 0 L61 35 L98 35 L68 57 L79 91 L50 70 L21 91 L32 57 L2 35 L39 35 Z');
+        }
+
+        h1{
+            margin:0 0 0.25rem 0;
+            font-family: "Cinzel", serif;
+            font-weight:700;
+            letter-spacing:0.18em;
+            text-transform:uppercase;
+            font-size:3.1rem;
+            color:var(--gold);
+            text-shadow:
+                0 1px 0 rgba(255,255,255,0.03),
+                0 8px 30px rgba(0,0,0,0.7),
+                0 1px 0 rgba(0,0,0,0.6) inset;
+            display:flex;
+            align-items:baseline;
+            gap:1rem;
+        }
+
+        .subtitle{
+            color:var(--muted);
+            font-size:0.9rem;
+            margin-top:0.35rem;
+            margin-bottom:1.6rem;
+            opacity:0.9;
+        }
+
+        .hello{
+            display:inline-block;
+            padding:0.9rem 1.1rem;
+            background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+            border:1px solid rgba(255,255,255,0.03);
+            border-radius:8px;
+            font-weight:600;
+            color:#fff;
+            letter-spacing:0.06em;
+            box-shadow: inset 0 -6px 20px rgba(0,0,0,0.6);
+            font-size:1rem;
+        }
+
+        .links{
+            margin-top:1.6rem;
+            display:flex;
+            flex-direction:column;
+            gap:0.9rem;
+        }
+
+        .link{
+            display:flex;
+            align-items:center;
+            gap:0.9rem;
+            padding:0.9rem 1rem;
+            background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(0,0,0,0.06));
+            border-radius:10px;
+            border:1px solid rgba(255,255,255,0.02);
+            color:var(--muted);
+            text-decoration:none;
+            transition:transform .14s ease, box-shadow .14s ease, background .18s ease;
+        }
+
+        .link:hover{
+            transform:translateY(-4px);
+            box-shadow: 0 10px 30px rgba(2,2,2,0.6);
+            background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(139,15,15,0.03));
+            color:#fff;
+        }
+
+        .link .icon{
+            width:44px;
+            height:44px;
+            flex:0 0 44px;
+            display:grid;
+            place-items:center;
+            border-radius:8px;
+            background:linear-gradient(180deg, rgba(201,162,74,0.12), rgba(201,162,74,0.03));
+            color:var(--gold);
+            font-weight:700;
+            box-shadow: inset 0 -6px 10px rgba(0,0,0,0.5);
+            font-family: "Cinzel", serif;
+        }
+
+        .link .meta{
+            display:flex;
+            flex-direction:column;
+            gap:2px;
+        }
+        .link .title{font-weight:600; color:#fff; font-size:0.98rem}
+        .link .desc{font-size:0.82rem; color:var(--muted); opacity:0.85}
+
+        /* sidebar */
+        .sidebar{
+            padding:1.6rem;
+            border-radius:12px;
+            background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.06));
+            border:1px solid rgba(255,255,255,0.03);
+            height:fit-content;
+            box-shadow: 0 8px 24px rgba(2,2,2,0.55);
+        }
+
+        .crest{
+            width:72px;
+            height:72px;
+            border-radius:10px;
+            background:linear-gradient(180deg,#2a2a2a,#111);
+            display:grid;
+            place-items:center;
+            color:var(--gold);
+            font-family:"Cinzel",serif;
+            font-size:1.6rem;
+            margin-bottom:1rem;
+            box-shadow: inset 0 -8px 20px rgba(0,0,0,0.7);
+        }
+
+        .muted{
+            font-size:0.86rem;
+            color:var(--muted);
+            line-height:1.45;
+        }
+
+        footer{
+            margin-top:1.2rem;
+            font-size:0.78rem;
+            color:rgba(189,189,189,0.7);
+            display:flex;
+            justify-content:space-between;
+            gap:1rem;
+            align-items:center;
+        }
+
+        @media (max-width:900px){
+            .stage{grid-template-columns:1fr; padding:0}
+            h1{font-size:2.4rem}
+        }
+    </style>
+</head>
+<body>
+    <main class="stage" role="main">
+        <section class="panel" aria-labelledby="main-title">
+            <div class="sigil" aria-hidden="true"></div>
+            <header>
+                <h1 id="main-title">HELLO, WORLD</h1>
+                <div class="subtitle">A random page. No content.</div>
+            </header>
+
+            <div class="hello">Welcome to the Index</div>
+
+            <nav class="links" aria-label="Index links">
+                <a class="link" href="#">
+                    <div class="icon">P</div>
+                    <div class="meta">
+                        <div class="title">Projects</div>
+                        <div class="desc">Placeholder for projects & missions</div>
+                    </div>
+                </a>
+
+                <a class="link" href="#">
+                    <div class="icon">D</div>
+                    <div class="meta">
+                        <div class="title">Documents</div>
+                        <div class="desc">Placeholder for reference & logs</div>
+                    </div>
+                </a>
+            </nav>
+
+            <footer>
+                <div class="muted">Status: Idle</div>
+                <div class="muted">Build: local</div>
+            </footer>
+        </section>
+
+        <aside class="sidebar" aria-labelledby="side-title">
+            <div class="crest" aria-hidden="true">✠</div>
+            <h3 id="side-title" style="margin:0 0 0.6rem 0;font-family:Cinzel,serif;color:var(--gold);letter-spacing:0.06em">Nothing.</h3>
+            <p class="muted">Nothing to see here for now.</p>
+
+            <footer style="margin-top:1.2rem;">
+                <div style="font-size:0.8rem;color:var(--muted)">Version 0.1</div>
+            </footer>
+        </aside>
+    </main>
+</body>
+</html>
