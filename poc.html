@@ -16,12 +16,28 @@
             box-shadow: 6px 6px 0px rgba(0,0,0,0.15);
             color: #111;
         }
-        .monitor-glow {
-            text-shadow: 0 0 10px rgba(255, 180, 50, 0.8);
-        }
         #ui-root { text-rendering: pixelated; }
-        .agent-log-item { border-left: 3px solid transparent; transition: all 0.3s; }
-        .agent-log-item.active { border-left-color: #f97316; background: rgba(249, 115, 22, 0.05); }
+        .agent-log-item { border-left: 4px solid transparent; transition: all 0.3s; padding-left: 10px; margin-bottom: 4px; }
+        .agent-log-item.active { border-left-color: #f97316; background: rgba(249, 115, 22, 0.1); }
+        .agent-log-item.danger { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.15); font-weight: 800; }
+        
+        /* High Visibility Dialogue */
+        .dialogue-box {
+            position: absolute;
+            padding: 8px 12px;
+            background: #fffbe6; /* Old paper color */
+            border: 3px solid #2d241e;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+            font-size: 14px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 900;
+            color: #2d241e;
+            border-radius: 2px;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            z-index: 50;
+        }
     </style>
 </head>
 <body>
@@ -31,51 +47,54 @@
         <!-- Top Bar -->
         <div class="flex justify-between items-start">
             <div class="thought-bubble p-4 rounded-sm border-orange-500 border-l-8">
-                <h1 class="text-xs uppercase tracking-widest text-orange-600 font-black mb-1">Simulated Realm v2.0</h1>
-                <p class="text-sm pixel-text font-bold">Location: The Golden Outpost</p>
+                <h1 class="text-xs uppercase tracking-widest text-orange-600 font-black mb-1">Simulated Realm v4.0</h1>
+                <p class="text-sm pixel-text font-bold">Current Event: <span id="event-tag" class="text-blue-600">Peaceful Day</span></p>
                 <div class="flex gap-4 mt-2">
                     <div class="text-[10px] uppercase font-bold text-neutral-500">Entities: <span id="entity-count" class="text-orange-600">--</span></div>
-                    <div class="text-[10px] uppercase font-bold text-neutral-500">Weather: <span class="text-blue-500">Sunny</span></div>
+                    <div class="text-[10px] uppercase font-bold text-neutral-500">Quest Items: <span class="text-purple-600" id="quest-count">0</span></div>
                 </div>
             </div>
             
-            <div class="flex flex-col gap-2 items-end">
-                <div class="thought-bubble px-4 py-2 rounded-full flex items-center gap-2 border-none bg-orange-500 text-white shadow-lg">
-                    <div class="w-2 h-2 rounded-full bg-white animate-ping"></div>
-                    <span class="text-[10px] uppercase font-bold tracking-tighter">Multi-Agent Brain Active</span>
-                </div>
+            <div id="danger-warning" class="hidden thought-bubble px-6 py-3 rounded-full flex items-center gap-3 border-none bg-red-600 text-white shadow-lg animate-bounce">
+                <div class="w-3 h-3 rounded-full bg-white animate-ping"></div>
+                <span class="text-xs uppercase font-black tracking-widest">Monster Detected!</span>
             </div>
         </div>
 
-        <!-- Agent Thought (Dynamic Projection) -->
-        <div id="agent-display" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-64 text-center transition-all duration-500 opacity-0 scale-90">
-            <div class="thought-bubble p-4 rounded-lg max-w-xs relative border-4 border-orange-400">
+        <!-- Agent Thought -->
+        <div id="agent-display" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-72 text-center transition-all duration-500 opacity-0 scale-90">
+            <div class="thought-bubble p-4 rounded-lg max-w-sm relative border-4 border-orange-400">
                 <div class="text-[10px] uppercase font-black text-orange-500 mb-1" id="agent-name-tag">Hero</div>
-                <div id="agent-thought" class="text-sm font-medium italic text-neutral-800 leading-tight">"..."</div>
+                <div id="agent-thought" class="text-sm font-bold italic text-neutral-800 leading-tight">"..."</div>
                 <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rotate-45 bg-white border-r-4 border-b-4 border-orange-400"></div>
             </div>
         </div>
 
-        <!-- Bottom Bar: Multi-Agent Stream -->
+        <!-- Log Stream -->
         <div class="w-full max-w-xl mx-auto mb-4">
             <div class="thought-bubble p-4 rounded-lg border-2 border-black/10">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-[10px] uppercase font-black text-orange-600">Global Action Stream</span>
+                    <span class="text-[10px] uppercase font-black text-orange-600">Chaos Log & Reason Stream</span>
                     <span class="text-[10px] opacity-40 font-bold" id="sim-time">00:00:00</span>
                 </div>
-                <div id="log-container" class="h-32 overflow-y-auto text-[11px] pixel-text space-y-1 font-bold pr-2">
+                <div id="log-container" class="h-40 overflow-y-auto text-[11px] pixel-text space-y-1 font-bold pr-2">
                     <!-- Logs injected here -->
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="dialogue-layer" class="absolute inset-0 pointer-events-none"></div>
+
     <!-- Controls -->
     <div class="absolute bottom-6 right-6 z-20 flex flex-col gap-3 pointer-events-auto">
         <button onclick="cycleCamera()" class="thought-bubble p-4 rounded-lg hover:bg-orange-100 transition-all cursor-pointer bg-white">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
         </button>
-        <button onclick="triggerGlobalThink()" class="thought-bubble p-4 rounded-lg hover:scale-105 transition-all cursor-pointer bg-orange-500 text-white border-none">
+        <button onclick="spawnMonster()" class="thought-bubble p-4 rounded-lg hover:bg-red-500 hover:text-white transition-all cursor-pointer bg-white border-red-500 text-red-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        </button>
+        <button onclick="triggerGlobalThink()" class="thought-bubble p-4 rounded-lg hover:scale-105 transition-all cursor-pointer bg-orange-500 text-white border-none shadow-xl">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
         </button>
     </div>
@@ -99,20 +118,37 @@
         import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
         import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass';
 
-        // --- WORLD CONFIG ---
+        // --- CONFIG & ASSETS ---
         const SPRITES = {
             HERO_RED: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/37.png',
             HERO_YELLOW: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/25.png',
             HERO_EEVEE: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/133.png',
             NPC_MAN: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/122.png',
             ANIMAL_BIRD: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/16.png',
-            ANIMAL_RAT: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/19.png'
+            MONSTER: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/94.png', // Gengar
+            FOOD: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/items/berry.png',
+            IDOL: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/items/nugget.png'
         };
 
-        let scene, camera, renderer, composer, worldGroup;
-        let viewMode = 0; // 0: Cinematic, 1-3: Heroes
+        const FUNNY_LINES = [
+            "It is a terrifying carp.", 
+            "I like turtles for their shells.", 
+            "The weather is... suboptimal.", 
+            "I have an urge to dig a hole.", 
+            "My knees are 34% more arthritic today.",
+            "Urist is throwing a tantrum!",
+            "Who left this rock here? It's vulgar.",
+            "I'm 80% sure I'm a simulation.",
+            "Cats are liquid. It's proven physics.",
+            "I crave a very specific kind of berry."
+        ];
+
+        let scene, camera, renderer, composer, worldGroup, groundMesh;
+        let viewMode = 0; 
         let entities = [];
+        let poiList = [];
         const loader = new THREE.TextureLoader();
+        const raycaster = new THREE.Raycaster();
 
         // --- INITIALIZATION ---
         function init() {
@@ -121,7 +157,7 @@
             scene.background = new THREE.Color(0xfff5e6);
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 10, 20);
+            camera.position.set(0, 20, 40);
 
             renderer = new THREE.WebGLRenderer({ antialias: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -130,20 +166,21 @@
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.body.appendChild(renderer.domElement);
 
-            // Lighting
             scene.add(new THREE.AmbientLight(0xffffff, 1.0));
             const sun = new THREE.DirectionalLight(0xffe0ac, 2.5);
-            sun.position.set(20, 40, 20);
+            sun.position.set(30, 60, 30);
             sun.castShadow = true;
-            sun.shadow.camera.left = -40; sun.shadow.camera.right = 40;
-            sun.shadow.camera.top = 40; sun.shadow.camera.bottom = -40;
+            sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
+            sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
             sun.shadow.mapSize.set(2048, 2048);
             scene.add(sun);
 
             worldGroup = new THREE.Group();
             scene.add(worldGroup);
 
-            setupEnvironment();
+            setupTerrain();
+            setupLandmarks(); // Stonehenge etc
+            spawnQuestItems();
             spawnEntities();
             setupPostProcessing();
 
@@ -151,99 +188,94 @@
             animate();
         }
 
-        // --- ENVIRONMENT BUILDER ---
-        function setupEnvironment() {
-            // Grass Floor
+        // --- TERRAIN ---
+        function setupTerrain() {
+            const size = 120;
+            const segments = 45;
+            const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+            const positionAttribute = geometry.getAttribute('position');
+            for (let i = 0; i < positionAttribute.count; i++) {
+                const x = positionAttribute.getX(i);
+                const y = positionAttribute.getY(i);
+                const z = Math.sin(x * 0.08) * 3 + Math.cos(y * 0.12) * 3;
+                positionAttribute.setZ(i, z);
+            }
+            geometry.computeVertexNormals();
+
             const grassTex = loader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
             grassTex.magFilter = THREE.NearestFilter;
             grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
-            grassTex.repeat.set(32, 32);
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ map: grassTex, color: 0x99cc44 }));
-            floor.rotation.x = -Math.PI / 2;
-            floor.receiveShadow = true;
-            worldGroup.add(floor);
+            grassTex.repeat.set(20, 20);
 
-            // Houses
-            for(let i = 0; i < 4; i++) {
-                const house = createHouse();
-                house.position.set(
-                    i % 2 === 0 ? 15 : -15, 
-                    0, 
-                    i < 2 ? 15 : -15
+            groundMesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: grassTex, color: 0x99cc44 }));
+            groundMesh.rotation.x = -Math.PI / 2;
+            groundMesh.receiveShadow = true;
+            worldGroup.add(groundMesh);
+        }
+
+        function getGroundHeight(x, z) {
+            raycaster.set(new THREE.Vector3(x, 30, z), new THREE.Vector3(0, -1, 0));
+            const intersects = raycaster.intersectObject(groundMesh);
+            if (intersects.length > 0) return intersects[0].point.y;
+            return 0;
+        }
+
+        // --- LANDMARKS ---
+        function setupLandmarks() {
+            // Stonehenge (Chat Area)
+            const hX = -15, hZ = -15;
+            poiList.push({ name: "Stonehenge", pos: new THREE.Vector3(hX, 0, hZ), radius: 6 });
+            
+            for(let i = 0; i < 8; i++) {
+                const ang = (i / 8) * Math.PI * 2;
+                const rock = new THREE.Mesh(
+                    new THREE.BoxGeometry(2, 5 + Math.random()*2, 1.5),
+                    new THREE.MeshStandardMaterial({ color: 0x777777 })
                 );
-                worldGroup.add(house);
+                const rx = hX + Math.cos(ang) * 5;
+                const rz = hZ + Math.sin(ang) * 5;
+                rock.position.set(rx, getGroundHeight(rx, rz) + 2.5, rz);
+                rock.rotation.y = ang;
+                rock.castShadow = true;
+                worldGroup.add(rock);
             }
 
-            // Foliage & Rocks
-            for(let i = 0; i < 100; i++) {
-                const type = Math.random();
-                if (type < 0.7) createFoliage();
-                else createRock();
+            // Scattered Trees
+            for(let i = 0; i < 60; i++) {
+                const tx = (Math.random()-0.5)*100;
+                const tz = (Math.random()-0.5)*100;
+                const tree = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 6), new THREE.MeshStandardMaterial({color: 0x442211}));
+                tree.position.set(tx, getGroundHeight(tx, tz) + 3, tz);
+                tree.castShadow = true;
+                worldGroup.add(tree);
             }
         }
 
-        function createHouse() {
-            const group = new THREE.Group();
-            // Walls
-            const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), new THREE.MeshStandardMaterial({ color: 0xddccbb }));
-            walls.position.y = 2;
-            walls.castShadow = true;
-            walls.receiveShadow = true;
-            group.add(walls);
-            // Roof
-            const roof = new THREE.Mesh(new THREE.ConeGeometry(5.5, 4, 4), new THREE.MeshStandardMaterial({ color: 0x884422 }));
-            roof.position.y = 6;
-            roof.rotation.y = Math.PI / 4;
-            roof.castShadow = true;
-            group.add(roof);
-            return group;
+        function spawnQuestItems() {
+            for(let i = 0; i < 15; i++) {
+                const ix = (Math.random()-0.5)*90;
+                const iz = (Math.random()-0.5)*90;
+                const iy = getGroundHeight(ix, iz) + 0.5;
+                const type = Math.random() > 0.5 ? 'FOOD' : 'IDOL';
+                
+                const tex = loader.load(SPRITES[type]);
+                tex.magFilter = THREE.NearestFilter;
+                const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.1 }));
+                mesh.position.set(ix, iy, iz);
+                mesh.onBeforeRender = function() { this.rotation.y = camera.rotation.y; };
+                worldGroup.add(mesh);
+                poiList.push({ name: type, pos: new THREE.Vector3(ix, iy, iz), mesh, active: true });
+            }
+            document.getElementById('quest-count').innerText = poiList.filter(p => p.active && p.name !== "Stonehenge").length;
         }
 
-        function createFoliage() {
-            const spriteTex = loader.load('https://threejs.org/examples/textures/sprites/snowflake7.png');
-            spriteTex.magFilter = THREE.NearestFilter;
-            const mat = new THREE.MeshStandardMaterial({ 
-                color: new THREE.Color().setHSL(0.2 + Math.random() * 0.1, 0.7, 0.45),
-                transparent: true, alphaTest: 0.5, map: spriteTex
-            });
-            const bush = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
-            bush.position.set((Math.random() - 0.5) * 80, 1, (Math.random() - 0.5) * 80);
-            bush.castShadow = true;
-            bush.onBeforeRender = function() { 
-                this.rotation.y = Math.atan2(camera.position.x - this.position.x, camera.position.z - this.position.z);
-            };
-            worldGroup.add(bush);
-        }
-
-        function createRock() {
-            const rock = new THREE.Mesh(
-                new THREE.DodecahedronGeometry(Math.random() * 1.5), 
-                new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 1 })
-            );
-            rock.position.set((Math.random() - 0.5) * 80, 0.5, (Math.random() - 0.5) * 80);
-            rock.rotation.set(Math.random(), Math.random(), Math.random());
-            rock.castShadow = true;
-            rock.receiveShadow = true;
-            worldGroup.add(rock);
-        }
-
-        // --- ENTITY SYSTEM ---
+        // --- ENTITY LOGIC ---
         function spawnEntities() {
-            // Heroes
-            addEntity('Vulpix', SPRITES.HERO_RED, 'HERO', new THREE.Vector3(0, 1, 0));
-            addEntity('Pika', SPRITES.HERO_YELLOW, 'HERO', new THREE.Vector3(5, 1, 5));
-            addEntity('Eevee', SPRITES.HERO_EEVEE, 'HERO', new THREE.Vector3(-5, 1, 3));
-            
-            // NPCs
-            for(let i = 0; i < 3; i++) addEntity(`Villager ${i+1}`, SPRITES.NPC_MAN, 'NPC');
-            
-            // Animals
-            for(let i = 0; i < 5; i++) {
-                addEntity('Bird', SPRITES.ANIMAL_BIRD, 'ANIMAL');
-                addEntity('Rat', SPRITES.ANIMAL_RAT, 'ANIMAL');
-            }
-            
-            document.getElementById('entity-count').innerText = entities.length;
+            addEntity('Urist', SPRITES.HERO_RED, 'HERO', new THREE.Vector3(0,0,0));
+            addEntity('Blinky', SPRITES.HERO_YELLOW, 'HERO', new THREE.Vector3(10,0,10));
+            addEntity('Floof', SPRITES.HERO_EEVEE, 'HERO', new THREE.Vector3(-10,0,5));
+            for(let i = 0; i < 4; i++) addEntity(`Pleb ${i}`, SPRITES.NPC_MAN, 'NPC');
+            for(let i = 0; i < 5; i++) addEntity('Bird', SPRITES.ANIMAL_BIRD, 'ANIMAL');
         }
 
         function addEntity(name, url, type, pos = null) {
@@ -253,81 +285,244 @@
                 new THREE.PlaneGeometry(2, 2),
                 new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.1, side: THREE.DoubleSide })
             );
-            mesh.position.copy(pos || new THREE.Vector3((Math.random()-0.5)*40, 1, (Math.random()-0.5)*40));
+            const startX = pos ? pos.x : (Math.random()-0.5)*60;
+            const startZ = pos ? pos.z : (Math.random()-0.5)*60;
+            mesh.position.set(startX, getGroundHeight(startX, startZ) + 1, startZ);
             mesh.castShadow = true;
-            
-            const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 12), new THREE.MeshBasicMaterial({ color: 0x000, transparent: true, opacity: 0.3 }));
-            shadow.rotation.x = -Math.PI/2;
-            shadow.position.y = -0.95;
-            mesh.add(shadow);
-            
             scene.add(mesh);
 
             const entity = {
                 name, type, mesh,
-                target: mesh.position.clone(),
-                state: 'IDLE',
-                timer: Math.random() * 5,
-                speed: type === 'HERO' ? 0.08 : (type === 'ANIMAL' ? 0.15 : 0.04),
+                target: new THREE.Vector3(mesh.position.x, 0, mesh.position.z),
+                state: 'WANDER', timer: 3, walkPhase: 0,
+                speed: type === 'HERO' ? 0.09 : (type === 'NPC' ? 0.05 : 0.12),
+                dialogueCooldown: 0, isTalking: false, talkTimer: 0,
+                isFleeing: false,
+                
                 update(delta, time) {
-                    // Billboard
                     this.mesh.rotation.y = Math.atan2(camera.position.x - this.mesh.position.x, camera.position.z - this.mesh.position.z);
                     
-                    // Simple Logic
+                    if(this.isTalking) {
+                        this.talkTimer -= delta;
+                        if(this.talkTimer <= 0) this.isTalking = false;
+                        return;
+                    }
+
+                    // MONSTER DETECTION
+                    const monster = entities.find(e => e.type === 'MONSTER');
+                    if (monster && this.type !== 'MONSTER' && this.mesh.position.distanceTo(monster.mesh.position) < 8) {
+                        this.isFleeing = true;
+                        this.state = 'FLEE';
+                        this.target.copy(this.mesh.position).sub(monster.mesh.position).normalize().multiplyScalar(10).add(this.mesh.position);
+                    } else {
+                        this.isFleeing = false;
+                    }
+
                     this.timer -= delta;
-                    if(this.timer <= 0) {
-                        this.state = Math.random() > 0.4 ? 'WANDER' : 'IDLE';
-                        this.timer = 3 + Math.random() * 5;
-                        if(this.state === 'WANDER') {
-                            this.target.set((Math.random()-0.5)*50, 1, (Math.random()-0.5)*50);
+                    this.dialogueCooldown -= delta;
+
+                    if(this.timer <= 0 && !this.isFleeing) {
+                        this.timer = 5 + Math.random() * 5;
+                        const dice = Math.random();
+                        if(dice < 0.4) {
+                            this.state = 'WANDER';
+                            // Weighted Target: Go to POI
+                            const activePOIs = poiList.filter(p => p.active);
+                            const poi = activePOIs[Math.floor(Math.random()*activePOIs.length)];
+                            this.target.copy(poi.pos).add(new THREE.Vector3((Math.random()-0.5)*3, 0, (Math.random()-0.5)*3));
+                        } else {
+                            this.state = 'IDLE';
                         }
                     }
 
-                    if(this.state === 'WANDER') {
-                        const dir = this.target.clone().sub(this.mesh.position).normalize();
-                        if(this.mesh.position.distanceTo(this.target) > 0.5) {
-                            this.mesh.position.addScaledVector(dir, this.speed);
+                    if(this.state === 'WANDER' || this.state === 'FLEE') {
+                        const dist = new THREE.Vector2(this.target.x - this.mesh.position.x, this.target.z - this.mesh.position.z).length();
+                        const s = this.isFleeing ? this.speed * 2 : this.speed;
+                        if(dist > 0.4) {
+                            const ang = Math.atan2(this.target.z - this.mesh.position.z, this.target.x - this.mesh.position.x);
+                            const nx = this.mesh.position.x + Math.cos(ang) * s;
+                            const nz = this.mesh.position.z + Math.sin(ang) * s;
+                            this.mesh.position.set(nx, getGroundHeight(nx, nz) + 1, nz);
+                            
+                            this.walkPhase += delta * (this.isFleeing ? 25 : 12);
+                            this.mesh.rotation.z = Math.cos(this.walkPhase) * 0.15;
+                            this.mesh.position.y += Math.abs(Math.sin(this.walkPhase)) * 0.1;
+                        } else {
+                            this.state = 'IDLE';
+                            this.checkQuestPickup();
                         }
+                    } else {
+                        this.mesh.position.y = getGroundHeight(this.mesh.position.x, this.mesh.position.z) + 1 + Math.sin(time*2)*0.05;
+                        this.mesh.rotation.z = 0;
                     }
-                    
-                    // Float anim
-                    this.mesh.position.y = 1 + Math.sin(time * 3 + this.mesh.position.x) * 0.1;
+                },
+
+                checkQuestPickup() {
+                    poiList.forEach(poi => {
+                        if(poi.active && poi.name !== "Stonehenge" && this.mesh.position.distanceTo(poi.pos) < 2) {
+                            poi.active = false;
+                            poi.mesh.visible = false;
+                            addLog(`[${this.name}] found a ${poi.name}! Reason: "It sparked joy."`, "active");
+                            document.getElementById('quest-count').innerText = poiList.filter(p => p.active && p.name !== "Stonehenge").length;
+                        }
+                    });
                 }
             };
             entities.push(entity);
+            document.getElementById('entity-count').innerText = entities.length;
         }
 
-        // --- POST PROCESSING ---
+        // --- MONSTER ---
+        window.spawnMonster = () => {
+            if(entities.some(e => e.type === 'MONSTER')) return;
+            
+            const mx = 30, mz = 30;
+            const tex = loader.load(SPRITES.MONSTER);
+            tex.magFilter = THREE.NearestFilter;
+            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), new THREE.MeshStandardMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }));
+            mesh.position.set(mx, getGroundHeight(mx, mz) + 1.5, mz);
+            mesh.castShadow = true;
+            scene.add(mesh);
+
+            const monster = {
+                name: "The Void-Gengar", type: 'MONSTER', mesh, speed: 0.18, timer: 20,
+                update(delta, time) {
+                    this.mesh.rotation.y = Math.atan2(camera.position.x - this.mesh.position.x, camera.position.z - this.mesh.position.z);
+                    this.timer -= delta;
+                    
+                    // Hunt nearest non-monster
+                    let nearest = null; let minDist = Infinity;
+                    entities.forEach(e => {
+                        if(e.type !== 'MONSTER') {
+                            const d = e.mesh.position.distanceTo(this.mesh.position);
+                            if(d < minDist) { minDist = d; nearest = e; }
+                        }
+                    });
+
+                    if(nearest) {
+                        const ang = Math.atan2(nearest.mesh.position.z - this.mesh.position.z, nearest.mesh.position.x - this.mesh.position.x);
+                        this.mesh.position.x += Math.cos(ang) * this.speed;
+                        this.mesh.position.z += Math.sin(ang) * this.speed;
+                        this.mesh.position.y = getGroundHeight(this.mesh.position.x, this.mesh.position.z) + 1.5 + Math.sin(time*5)*0.2;
+                        
+                        if(minDist < 1.5) {
+                            addLog(`[CRITICAL] ${nearest.name} was devoured!`, "danger");
+                            removeEntity(nearest);
+                        }
+                    }
+
+                    if(this.timer <= 0) {
+                        addLog("The monster has returned to the digital void.", "active");
+                        removeEntity(this);
+                    }
+                }
+            };
+            entities.push(monster);
+            document.getElementById('danger-warning').classList.remove('hidden');
+            document.getElementById('event-tag').innerText = "MONSTER ATTACK";
+            document.getElementById('event-tag').className = "text-red-600 font-black";
+        };
+
+        function removeEntity(ent) {
+            scene.remove(ent.mesh);
+            entities = entities.filter(e => e !== ent);
+            document.getElementById('entity-count').innerText = entities.length;
+            if(!entities.some(e => e.type === 'MONSTER')) {
+                document.getElementById('danger-warning').classList.add('hidden');
+                document.getElementById('event-tag').innerText = "Peaceful Day";
+                document.getElementById('event-tag').className = "text-blue-600";
+            }
+        }
+
+        // --- SOCIAL ---
+        function checkSocial() {
+            for(let i=0; i<entities.length; i++) {
+                const a = entities[i];
+                if(a.type === 'ANIMAL' || a.type === 'MONSTER' || a.dialogueCooldown > 0 || a.isTalking) continue;
+                for(let j=i+1; j<entities.length; j++) {
+                    const b = entities[j];
+                    if(b.type === 'ANIMAL' || b.type === 'MONSTER' || b.dialogueCooldown > 0 || b.isTalking) continue;
+                    if(a.mesh.position.distanceTo(b.mesh.position) < 4) {
+                        a.isTalking = b.isTalking = true;
+                        a.talkTimer = b.talkTimer = 4;
+                        a.dialogueCooldown = b.dialogueCooldown = 20;
+                        const line = FUNNY_LINES[Math.floor(Math.random()*FUNNY_LINES.length)];
+                        showBubble(a, line);
+                        showBubble(b, "I concur. " + (Math.random()*100).toFixed(0) + "% logic.");
+                        break;
+                    }
+                }
+            }
+        }
+
+        function showBubble(ent, text) {
+            const b = document.createElement('div');
+            b.className = 'dialogue-box';
+            b.innerText = text;
+            document.getElementById('dialogue-layer').appendChild(b);
+            const up = () => {
+                if(!ent.isTalking) { b.remove(); return; }
+                const v = ent.mesh.position.clone().project(camera);
+                b.style.left = `${(v.x+1)/2*window.innerWidth}px`;
+                b.style.top = `${-(v.y-1)/2*window.innerHeight - 80}px`;
+                requestAnimationFrame(up);
+            };
+            up();
+        }
+
+        function addLog(txt, cls="") {
+            const l = document.getElementById('log-container');
+            const d = document.createElement('div');
+            d.className = "agent-log-item " + cls;
+            d.innerText = `> ${txt}`;
+            l.prepend(d);
+            setTimeout(() => d.classList.remove('active'), 3000);
+        }
+
+        // --- CAMERA & LOOP ---
+        function cycleCamera() {
+            viewMode = (viewMode + 1) % 4;
+            addLog(`Focal point: ${viewMode === 0 ? 'Cinematic' : entities[viewMode-1].name}`);
+        }
+
+        window.triggerGlobalThink = () => {
+            const h = entities.filter(e => e.type === 'HERO');
+            const a = h[Math.floor(Math.random()*h.length)];
+            const d = document.getElementById('agent-display');
+            document.getElementById('agent-name-tag').innerText = a.name;
+            document.getElementById('agent-thought').innerText = FUNNY_LINES[Math.floor(Math.random()*FUNNY_LINES.length)];
+            d.style.opacity = '1';
+            d.style.transform = 'translate(-50%, -20px) scale(1)';
+            setTimeout(() => { d.style.opacity='0'; d.style.transform='translate(-50%, 0) scale(0.9)'; }, 4000);
+        };
+
         function setupPostProcessing() {
             composer = new EffectComposer(renderer);
             composer.addPass(new RenderPass(scene, camera));
-            
-            const bokeh = new BokehPass(scene, camera, { focus: 15.0, aperture: 0.00005, maxblur: 0.01 });
-            composer.addPass(bokeh);
-            
-            const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.4, 0.85);
-            composer.addPass(bloom);
+            composer.addPass(new BokehPass(scene, camera, { focus: 25.0, aperture: 0.00003, maxblur: 0.01 }));
+            composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.4, 0.9));
         }
 
-        // --- LOOP & EVENTS ---
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now() * 0.001;
             const delta = 0.016;
 
             entities.forEach(e => e.update(delta, time));
+            checkSocial();
 
-            // Camera Logic
-            if(viewMode === 0) { // Cinematic
-                camera.position.x = Math.sin(time * 0.1) * 35;
-                camera.position.z = Math.cos(time * 0.1) * 35;
-                camera.position.y = 15 + Math.sin(time * 0.2) * 5;
+            if(viewMode === 0) {
+                camera.position.x = Math.sin(time*0.06)*45;
+                camera.position.z = Math.cos(time*0.06)*45;
+                camera.position.y = 25 + Math.sin(time*0.1)*5;
                 camera.lookAt(0, 0, 0);
-            } else { // Follow Hero
-                const hero = entities[viewMode - 1];
-                const ideal = hero.mesh.position.clone().add(new THREE.Vector3(0, 8, 15));
-                camera.position.lerp(ideal, 0.05);
-                camera.lookAt(hero.mesh.position);
+            } else {
+                const h = entities[viewMode-1];
+                if(h) {
+                    const ideal = h.mesh.position.clone().add(new THREE.Vector3(0, 15, 20));
+                    camera.position.lerp(ideal, 0.05);
+                    camera.lookAt(h.mesh.position);
+                } else viewMode = 0;
             }
 
             composer.render();
@@ -341,51 +536,8 @@
             composer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- SIMULATION COMMANDS ---
-        const heroThoughts = [
-            "I detect a high concentration of berry signals nearby.",
-            "Analyzing the NPC movements... they seem cyclical.",
-            "This meadow is surprisingly high resolution today.",
-            "My internal clock suggests it's time for an adventure.",
-            "I wonder if the other Heroes are following the same prompt."
-        ];
-
-        window.triggerGlobalThink = () => {
-            const heroes = entities.filter(e => e.type === 'HERO');
-            const actor = heroes[Math.floor(Math.random() * heroes.length)];
-            
-            const display = document.getElementById('agent-display');
-            const nameTag = document.getElementById('agent-name-tag');
-            const thought = document.getElementById('agent-thought');
-            const logs = document.getElementById('log-container');
-
-            nameTag.innerText = actor.name;
-            thought.innerText = heroThoughts[Math.floor(Math.random() * heroThoughts.length)];
-            display.style.opacity = '1';
-            display.style.transform = 'translate(-50%, -10px) scale(1)';
-
-            const log = document.createElement('div');
-            log.className = "agent-log-item active text-orange-600 p-1 rounded-sm";
-            log.innerHTML = `> [${actor.name}] reasoning: ${thought.innerText}`;
-            logs.prepend(log);
-
-            setTimeout(() => {
-                display.style.opacity = '0';
-                display.style.transform = 'translate(-50%, 0) scale(0.9)';
-                log.classList.remove('active');
-            }, 5000);
-        };
-
-        window.cycleCamera = () => {
-            viewMode = (viewMode + 1) % 4; // Cycles through Cinematic + 3 Heroes
-            const log = document.createElement('div');
-            log.className = "text-blue-500 italic";
-            log.innerText = `> Camera focal point changed: ${viewMode === 0 ? 'Cinematic Orbit' : entities[viewMode-1].name}`;
-            document.getElementById('log-container').prepend(log);
-        };
-
+        window.cycleCamera = cycleCamera;
         window.onload = init;
-        setInterval(() => { if(Math.random() > 0.8) triggerGlobalThink(); }, 8000);
     </script>
 </body>
 </html>
