@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorkine ARAP Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #09090b; color: #fafafa; user-select: none; }
+        canvas { 
+            image-rendering: pixelated;
+            background-image: 
+                linear-gradient(45deg, #111 25%, transparent 25%), 
+                linear-gradient(-45deg, #111 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #111 75%),
+                linear-gradient(-45deg, transparent 75%, #111 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        .control-panel { background: rgba(24, 24, 27, 0.8); backdrop-filter: blur(12px); }
+        input[type="range"] { accent-color: #3b82f6; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-8 py-4 bg-zinc-900 border-b border-zinc-800 z-50 shadow-2xl">
+        <div class="flex items-center gap-12">
+            <div>
+                <h1 class="text-xl font-black italic tracking-tighter text-blue-500">ARAP<span class="text-white">.VANILLA</span></h1>
+                <p class="text-[9px] text-zinc-500 font-mono tracking-widest uppercase">Pure JS Rigid Engine</p>
+            </div>
+            
+            <div class="flex bg-black/40 rounded-xl p-1 border border-zinc-800 shadow-inner">
+                <button id="btn-pin" class="px-6 py-2 rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-lg">1. RIG PINS</button>
+                <button id="btn-deform" class="px-6 py-2 rounded-lg text-xs font-bold transition-all text-zinc-500 hover:text-zinc-300">2. DEFORM</button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button id="btn-export" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-xs font-black transition-all shadow-xl active:scale-95 disabled:opacity-20" disabled>EXPORT PNG</button>
+            <label class="bg-white text-black px-5 py-2 rounded-xl text-xs font-black cursor-pointer hover:bg-zinc-200 active:scale-95 transition-all shadow-xl">
+                UPLOAD
+                <input type="file" id="image-input" class="hidden" accept="image/*">
+            </label>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Sidebar Controls -->
+        <aside class="w-72 control-panel border-r border-zinc-800 p-6 flex flex-col gap-8 overflow-y-auto">
+            <section>
+                <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Mesh Configuration</h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs mb-2"><span>Grid Density</span><span id="val-density">20</span></div>
+                        <input type="range" id="input-density" min="10" max="40" value="20" class="w-full">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-2"><span>Solver Iterations</span><span id="val-iters">15</span></div>
+                        <input type="range" id="input-iters" min="5" max="40" value="15" class="w-full">
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">View Options</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="check-wireframe" class="w-4 h-4 rounded border-zinc-700 bg-zinc-800">
+                        <span class="text-xs text-zinc-400 group-hover:text-white transition-colors">Show Wireframe</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="check-texture" checked class="w-4 h-4 rounded border-zinc-700 bg-zinc-800">
+                        <span class="text-xs text-zinc-400 group-hover:text-white transition-colors">Show Texture</span>
+                    </label>
+                </div>
+            </section>
+
+            <button id="btn-reset" class="mt-auto w-full py-3 bg-zinc-800 hover:bg-red-900/40 hover:text-red-400 border border-zinc-700 rounded-xl text-xs font-bold transition-all">RESET ALL PINS</button>
+        </aside>
+
+        <!-- Canvas Area -->
+        <div class="flex-1 relative flex items-center justify-center p-8 bg-zinc-950 overflow-auto">
+            <div id="empty-state" class="text-center opacity-30 pointer-events-none">
+                <div class="w-16 h-16 rounded-2xl border-2 border-dashed border-zinc-700 flex items-center justify-center mx-auto mb-4">
+                    <span class="text-2xl text-zinc-700">+</span>
+                </div>
+                <p class="text-xs font-mono uppercase tracking-widest">Load Source Image</p>
+            </div>
+            <canvas id="main-canvas" class="hidden shadow-2xl rounded-sm border border-zinc-800"></canvas>
+        </div>
+    </main>
+
+    <footer class="px-8 py-2 bg-zinc-900 border-t border-zinc-800 flex justify-between text-[9px] font-mono text-zinc-600 uppercase tracking-[0.3em]">
+        <div id="status-left">SOLVER: IDLE</div>
+        <div id="status-right">PINS: 0 | MESH: 0 TRIS</div>
+    </footer>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            image: null,
+            mode: 'PIN',
+            pins: [],
+            gridSize: 20,
+            iterations: 15,
+            showWireframe: false,
+            showTexture: true,
+            mesh: null,
+            dragInfo: { active: false, pinIndex: null }
+        };
+
+        const canvas = document.getElementById('main-canvas');
+        const ctx = canvas.getContext('2d', { alpha: true });
+
+        // --- Mesh Logic ---
+        function generateMesh() {
+            if (!state.image) return;
+            const w = state.image.width;
+            const h = state.image.height;
+            const cols = state.gridSize;
+            const rows = Math.round(state.gridSize * (h / w));
+            
+            const vertices = [];
+            const originalVertices = [];
+            const uvs = [];
+            const triangles = [];
+            const adjacency = [];
+
+            for (let i = 0; i <= rows; i++) {
+                for (let j = 0; j <= cols; j++) {
+                    const x = (j / cols) * w;
+                    const y = (i / rows) * h;
+                    vertices.push({ x, y });
+                    originalVertices.push({ x, y });
+                    uvs.push({ u: x, v: y });
+                    adjacency.push(new Set());
+                }
+            }
+
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const r0 = i * (cols + 1);
+                    const r1 = (i + 1) * (cols + 1);
+                    const v0 = r0 + j, v1 = r0 + j + 1, v2 = r1 + j, v3 = r1 + j + 1;
+                    
+                    triangles.push([v0, v1, v2]);
+                    triangles.push([v1, v3, v2]);
+
+                    [[v0, v1], [v1, v2], [v2, v0], [v1, v3], [v3, v2]].forEach(([a, b]) => {
+                        adjacency[a].add(b); adjacency[b].add(a);
+                    });
+                }
+            }
+
+            state.mesh = { 
+                vertices, originalVertices, triangles, uvs, 
+                adjacency: adjacency.map(s => Array.from(s)) 
+            };
+            document.getElementById('status-right').innerText = `PINS: ${state.pins.length} | MESH: ${triangles.length} TRIS`;
+            render();
+        }
+
+        // --- ARAP Solver ---
+        function solve() {
+            if (!state.mesh || state.pins.length < 2) return;
+            const { vertices, originalVertices, adjacency } = state.mesh;
+            
+            for (let iter = 0; iter < state.iterations; iter++) {
+                // Local: Rotations
+                const rotations = vertices.map((v, i) => {
+                    let s11 = 0, s12 = 0, s21 = 0, s22 = 0;
+                    adjacency[i].forEach(j => {
+                        const ex = originalVertices[i].x - originalVertices[j].x;
+                        const ey = originalVertices[i].y - originalVertices[j].y;
+                        const fx = vertices[i].x - vertices[j].x;
+                        const fy = vertices[i].y - vertices[j].y;
+                        s11 += fx * ex; s12 += fx * ey;
+                        s21 += fy * ex; s22 += fy * ey;
+                    });
+                    const angle = Math.atan2(s21 - s12, s11 + s22);
+                    return { c: Math.cos(angle), s: Math.sin(angle) };
+                });
+
+                // Global: Positions
+                const next = vertices.map((v, i) => {
+                    const pin = state.pins.find(p => p.meshIndex === i);
+                    if (pin) return { x: pin.x, y: pin.y };
+                    
+                    let sx = 0, sy = 0;
+                    adjacency[i].forEach(j => {
+                        const ex = originalVertices[i].x - originalVertices[j].x;
+                        const ey = originalVertices[i].y - originalVertices[j].y;
+                        const Ri = rotations[i], Rj = rotations[j];
+                        sx += vertices[j].x + 0.5 * ((Ri.c + Rj.c) * ex - (Ri.s + Rj.s) * ey);
+                        sy += vertices[j].y + 0.5 * ((Ri.s + Rj.s) * ex + (Ri.c + Rj.c) * ey);
+                    });
+                    return { x: sx / adjacency[i].length, y: sy / adjacency[i].length };
+                });
+
+                vertices.forEach((v, i) => { v.x = next[i].x; v.y = next[i].y; });
+            }
+            render();
+        }
+
+        // --- Rendering ---
+        function render() {
+            if (!state.image || !state.mesh) return;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const { vertices, triangles, uvs } = state.mesh;
+
+            if (state.showTexture) {
+                triangles.forEach(([a, b, c]) => {
+                    const v0 = vertices[a], v1 = vertices[b], v2 = vertices[c];
+                    const t0 = uvs[a], t1 = uvs[b], t2 = uvs[c];
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(v0.x, v0.y); ctx.lineTo(v1.x, v1.y); ctx.lineTo(v2.x, v2.y);
+                    ctx.closePath();
+                    ctx.clip();
+
+                    const du1 = t1.u - t0.u, dv1 = t1.v - t0.v;
+                    const du2 = t2.u - t0.u, dv2 = t2.v - t0.v;
+                    const det = du1 * dv2 - du2 * dv1;
+                    if (Math.abs(det) < 1e-6) { ctx.restore(); return; }
+
+                    const idet = 1.0 / det;
+                    const m11 = ((v1.x - v0.x) * dv2 - (v2.x - v0.x) * dv1) * idet;
+                    const m12 = ((v1.y - v0.y) * dv2 - (v2.y - v0.y) * dv1) * idet;
+                    const m21 = ((v2.x - v0.x) * du1 - (v1.x - v0.x) * du2) * idet;
+                    const m22 = ((v2.y - v0.y) * du1 - (v1.y - v0.y) * du2) * idet;
+                    const tx = v0.x - m11 * t0.u - m21 * t0.v;
+                    const ty = v0.y - m12 * t0.u - m22 * t0.v;
+
+                    ctx.setTransform(m11, m12, m21, m22, tx, ty);
+                    ctx.drawImage(state.image, 0, 0);
+                    ctx.restore();
+                });
+            }
+
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            if (state.showWireframe) {
+                ctx.strokeStyle = "rgba(59, 130, 246, 0.3)";
+                ctx.lineWidth = 0.5;
+                triangles.forEach(([a, b, c]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(vertices[a].x, vertices[a].y);
+                    ctx.lineTo(vertices[b].x, vertices[b].y);
+                    ctx.lineTo(vertices[c].x, vertices[c].y);
+                    ctx.closePath();
+                    ctx.stroke();
+                });
+            }
+
+            state.pins.forEach(p => {
+                ctx.fillStyle = state.mode === 'DEFORM' ? '#ef4444' : '#10b981';
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            });
+        }
+
+        // --- Interaction ---
+        function getCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+        }
+
+        canvas.onmousedown = (e) => {
+            const pos = getCoords(e);
+            if (state.mode === 'PIN') {
+                let min = Infinity, idx = -1;
+                state.mesh.vertices.forEach((v, i) => {
+                    const d = Math.hypot(v.x - pos.x, v.y - pos.y);
+                    if (d < min) { min = d; idx = i; }
+                });
+                if (idx !== -1) {
+                    state.pins.push({ ...pos, meshIndex: idx });
+                    document.getElementById('status-right').innerText = `PINS: ${state.pins.length} | MESH: ${state.mesh.triangles.length} TRIS`;
+                    render();
+                }
+            } else {
+                const idx = state.pins.findIndex(p => Math.hypot(p.x - pos.x, p.y - pos.y) < 20);
+                if (idx !== -1) state.dragInfo = { active: true, pinIndex: idx };
+            }
+        };
+
+        window.onmousemove = (e) => {
+            if (!state.dragInfo.active) return;
+            const pos = getCoords(e);
+            state.pins[state.dragInfo.pinIndex].x = pos.x;
+            state.pins[state.dragInfo.pinIndex].y = pos.y;
+            solve();
+        };
+
+        window.onmouseup = () => { state.dragInfo.active = false; };
+
+        // --- Controls ---
+        document.getElementById('image-input').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    canvas.classList.remove('hidden');
+                    document.getElementById('empty-state').classList.add('hidden');
+                    document.getElementById('btn-export').disabled = false;
+                    document.getElementById('status-left').innerText = "SOLVER: ACTIVE";
+                    generateMesh();
+                };
+                img.src = f.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        document.getElementById('btn-pin').onclick = () => {
+            state.mode = 'PIN';
+            document.getElementById('btn-pin').className = "px-6 py-2 rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-lg";
+            document.getElementById('btn-deform').className = "px-6 py-2 rounded-lg text-xs font-bold transition-all text-zinc-500 hover:text-zinc-300";
+            render();
+        };
+
+        document.getElementById('btn-deform').onclick = () => {
+            state.mode = 'DEFORM';
+            document.getElementById('btn-deform').className = "px-6 py-2 rounded-lg text-xs font-bold transition-all bg-blue-600 text-white shadow-lg";
+            document.getElementById('btn-pin').className = "px-6 py-2 rounded-lg text-xs font-bold transition-all text-zinc-500 hover:text-zinc-300";
+            render();
+        };
+
+        document.getElementById('input-density').oninput = (e) => {
+            state.gridSize = parseInt(e.target.value);
+            document.getElementById('val-density').innerText = state.gridSize;
+            generateMesh();
+        };
+
+        document.getElementById('input-iters').oninput = (e) => {
+            state.iterations = parseInt(e.target.value);
+            document.getElementById('val-iters').innerText = state.iterations;
+        };
+
+        document.getElementById('check-wireframe').onchange = (e) => { state.showWireframe = e.target.checked; render(); };
+        document.getElementById('check-texture').onchange = (e) => { state.showTexture = e.target.checked; render(); };
+        document.getElementById('btn-reset').onclick = () => { state.pins = []; generateMesh(); };
+        document.getElementById('btn-export').onclick = () => {
+            const link = document.createElement('a');
+            link.download = 'rigid-pose.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        };
+    </script>
+</body>
+</html>
