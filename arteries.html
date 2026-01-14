@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vascular Forge | Biomimetic Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+        
+        :root {
+            --bg-dark: #09090b;
+            --panel-bg: rgba(18, 18, 21, 0.96);
+            --accent: #f43f5e;
+            --accent-dim: rgba(244, 63, 94, 0.1);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body { margin: 0; overflow: hidden; background-color: var(--bg-dark); font-family: 'Inter', sans-serif; color: #e4e4e7; }
+        
+        #main-canvas { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; outline: none; 
+            background: radial-gradient(circle at center, #1c1917 0%, #000000 100%); 
+        }
+
+        #sidebar {
+            position: absolute; top: 0; right: 0; width: 380px; height: 100%;
+            background: var(--panel-bg); border-left: 1px solid var(--border);
+            z-index: 20; display: flex; flex-direction: column;
+            backdrop-filter: blur(16px);
+        }
+
+        .panel-header { padding: 0; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); }
+        
+        /* Tabs */
+        .tab-container { display: flex; }
+        .tab-btn {
+            flex: 1; padding: 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+            color: #71717a; cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent; background: transparent;
+        }
+        .tab-btn:hover { color: white; background: rgba(255,255,255,0.02); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(244, 63, 94, 0.05); }
+
+        .tab-content { display: none; flex: 1; overflow-y: auto; }
+        .tab-content.active { display: block; }
+
+        .panel-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+        .panel-title { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #fda4af; margin-bottom: 10px; letter-spacing: 0.05em; }
+
+        .control-group { margin-bottom: 14px; }
+        .control-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: #a1a1aa; }
+        
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%;
+            background: var(--accent); margin-top: -5px; box-shadow: 0 0 10px var(--accent-dim);
+        }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 2px; background: #3f3f46; border-radius: 2px; }
+
+        input[type="number"] {
+            background: #27272a; border: 1px solid #3f3f46; color: white;
+            padding: 2px 6px; border-radius: 4px; font-size: 11px; width: 60px; outline: none; text-align: center;
+        }
+
+        select {
+            width: 100%; background: #27272a; border: 1px solid #3f3f46; color: white;
+            padding: 8px 12px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer;
+        }
+
+        .btn {
+            width: 100%; padding: 10px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.05em; transition: all 0.2s; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #e11d48; box-shadow: 0 0 20px rgba(244, 63, 94, 0.4); }
+        .btn-sec { background: transparent; border: 1px solid #3f3f46; color: #a1a1aa; }
+        .btn-sec:hover { border-color: #71717a; color: white; }
+        
+        .toggle-switch { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #a1a1aa; cursor: pointer; }
+        .toggle-track { width: 32px; height: 16px; background: #3f3f46; border-radius: 8px; position: relative; transition: 0.2s; }
+        .toggle-knob { width: 12px; height: 12px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; }
+        .active .toggle-track { background: var(--accent); }
+        .active .toggle-knob { left: 18px; }
+
+        /* Manual Builder Styles */
+        .trunk-item { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 8px; overflow: hidden; }
+        .trunk-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); cursor: pointer; }
+        .trunk-body { padding: 12px; display: none; border-top: 1px solid var(--border); }
+        .trunk-item.open .trunk-body { display: block; }
+        
+    </style>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
+</head>
+<body>
+
+    <div class="absolute top-6 left-6 z-10 pointer-events-none">
+        <h1 class="text-2xl font-light text-white tracking-tight">VASCULAR<span class="font-bold text-rose-500">FORGE</span></h1>
+        <div class="text-[10px] text-zinc-500 mt-1 font-mono tracking-wider">BIOMIMETIC ENGINE v8.0</div>
+    </div>
+
+    <div id="sidebar">
+        <div class="panel-header">
+            <div class="tab-container">
+                <button class="tab-btn active" onclick="window.app.switchTab('procedural')">Procedural</button>
+                <button class="tab-btn" onclick="window.app.switchTab('manual')">Manual Builder</button>
+            </div>
+        </div>
+
+        <!-- PROCEDURAL TAB -->
+        <div id="tab-procedural" class="tab-content active">
+            <div class="panel-section">
+                <div class="panel-title">Topology Preset</div>
+                <select id="preset-select" onchange="window.app.loadPreset(this.value)">
+                    <option value="lca">LCA: Left Coronary System</option>
+                    <option value="rca">RCA: Right Coronary System</option>
+                    <option value="kidney">Renal System (Kidney)</option>
+                </select>
+                
+                <div class="control-group mt-4">
+                    <div class="control-label"><span>Seed</span></div>
+                    <div class="flex gap-2">
+                        <input type="number" id="seed-input" value="42" onchange="window.app.updateParam('seed', this.value)">
+                        <button class="btn btn-sec !py-1 flex-1" onclick="window.app.randomizeSeed()">Reroll</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MANUAL TAB -->
+        <div id="tab-manual" class="tab-content">
+            <div class="panel-section">
+                <div class="panel-title">Root Trunks</div>
+                <div id="manual-trunks-list">
+                    <!-- JS Injected -->
+                </div>
+                <button class="btn btn-sec w-full mt-2" onclick="window.app.addManualTrunk()">+ Add Trunk</button>
+            </div>
+        </div>
+
+        <!-- SHARED PHYSICS SETTINGS -->
+        <div class="panel-section">
+            <div class="panel-title">Physics & Growth</div>
+            
+            <div class="control-group">
+                <div class="control-label"><span>Base Radius (mm)</span><span id="val-rad">3.8</span></div>
+                <input type="range" min="1.0" max="10.0" step="0.1" value="3.8" oninput="window.app.updateParam('radius', this.value)">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label"><span>Vessel Density</span><span id="val-den">3</span></div>
+                <input type="range" min="1" max="6" step="1" value="3" oninput="window.app.updateParam('density', this.value)">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label"><span>Length Variance</span><span id="val-lenvar">0.2</span></div>
+                <input type="range" min="0" max="1.0" step="0.1" value="0.2" oninput="window.app.updateParam('lengthVar', this.value)">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label"><span>Repulsion Force</span><span id="val-rep">0.8</span></div>
+                <input type="range" min="0" max="2.0" step="0.1" value="0.8" oninput="window.app.updateParam('repulsion', this.value)">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label"><span>Bifurcation Angle</span><span id="val-ang">0.6</span></div>
+                <input type="range" min="0.1" max="1.5" step="0.1" value="0.6" oninput="window.app.updateParam('branchAngle', this.value)">
+                <div class="text-[9px] text-zinc-600 mt-1">Controls spread width (radians).</div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label"><span>Gravity Bias</span><span id="val-grav">0.3</span></div>
+                <input type="range" min="0" max="2.0" step="0.1" value="0.3" oninput="window.app.updateParam('gravity', this.value)">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">Visualization</div>
+            <div class="control-group" onclick="window.app.toggleCenterlines()">
+                <div class="toggle-switch" id="toggle-cl">
+                    <span>Show Centerlines</span>
+                    <div class="toggle-track"><div class="toggle-knob"></div></div>
+                </div>
+            </div>
+            <div class="control-group mt-2" onclick="window.app.toggleGravityHelper()">
+                <div class="toggle-switch" id="toggle-grav">
+                    <span>Show Gravity Vector</span>
+                    <div class="toggle-track"><div class="toggle-knob"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-5 mt-auto border-t border-white/5 bg-black/20">
+            <button class="btn btn-primary w-full" onclick="window.app.forceRegenerate()">Regenerate Structure</button>
+            <button class="btn btn-sec w-full mt-2" onclick="window.app.download()">Export OBJ</button>
+        </div>
+    </div>
+
+    <canvas id="main-canvas"></canvas>
+
+<script>
+/**
+ * VASCULAR FORGE v8.0
+ * - Manual Topology Builder
+ * - Enhanced Parametric Control
+ * - Advanced Repulsion & Gravity
+ */
+
+// --- UTILS ---
+const lerp = (a, b, t) => a + (b - a) * t;
+const gaussian = (x, height, center, width) => height * Math.exp(-Math.pow(x - center, 2) / (2 * Math.pow(width, 2)));
+
+class SeededRandom {
+    constructor(seed = 12345) { this.seed = parseInt(seed) || 12345; }
+    next() {
+        this.seed = (this.seed * 9301 + 49297) % 233280;
+        return this.seed / 233280;
+    }
+    nextSigned() { return this.next() * 2 - 1; }
+    range(min, max) { return min + this.next() * (max - min); }
+}
+
+// --- GENERATOR ENGINE ---
+
+class BioGenerator {
+    constructor() {
+        this.rng = new SeededRandom(42);
+        this.collisionPoints = []; 
+    }
+
+    generateTree(config) {
+        this.rng = new SeededRandom(config.seed);
+        this.collisionPoints = []; 
+        const segments = [];
+        let sphereRadius = 0;
+
+        // Determine Roots based on Mode
+        let roots = [];
+
+        if (config.mode === 'manual') {
+            // Use manually defined trunks
+            roots = config.manualTrunks.map(t => ({
+                pos: new THREE.Vector3(t.x, t.y, t.z),
+                dir: this.eulerToVec(t.rotY, t.rotZ),
+                radius: t.radius,
+                length: t.length,
+                type: 'MANUAL_ROOT'
+            }));
+            sphereRadius = 40; // Default heart context for manual
+        } else {
+            // Procedural Presets
+            if (config.type === 'lca') {
+                sphereRadius = 40; 
+                roots.push({
+                    pos: new THREE.Vector3(5, sphereRadius + 2, 5),
+                    dir: new THREE.Vector3(0.5, -1, 0.8).normalize(),
+                    radius: config.radius,
+                    length: 12,
+                    type: 'LCA_MAIN'
+                });
+            } else if (config.type === 'rca') {
+                sphereRadius = 40;
+                roots.push({
+                    pos: new THREE.Vector3(-5, sphereRadius + 2, -5),
+                    dir: new THREE.Vector3(-0.8, -0.5, -0.5).normalize(),
+                    radius: config.radius,
+                    length: 25,
+                    type: 'RCA_MAIN'
+                });
+            } else { // Kidney
+                roots.push({
+                    pos: new THREE.Vector3(0, 0, 0),
+                    dir: new THREE.Vector3(0, 1, 0),
+                    radius: config.radius,
+                    length: 30,
+                    type: 'ROOT'
+                });
+            }
+        }
+
+        const maxDepth = config.density + 2;
+
+        roots.forEach(root => {
+            this.growBranch(root.pos, root.dir, root.radius, root.length, 0, maxDepth, segments, config, sphereRadius, 'TRUNK');
+        });
+
+        return { segments, sphereRadius };
+    }
+
+    growBranch(startPos, dir, radius, length, depth, maxDepth, segments, config, sphereRadius, type) {
+        if (depth >= maxDepth || radius < 0.4) return;
+
+        // Length Randomization
+        const variance = config.lengthVar || 0.2;
+        const segmentLen = length * this.rng.range(1.0 - variance, 1.0 + variance);
+        
+        // Path Generation
+        const pathPoints = [];
+        const numPoints = Math.max(6, Math.floor(segmentLen / 1.5)); 
+        
+        let currentPos = startPos.clone();
+        let currentDir = dir.clone();
+        
+        pathPoints.push(currentPos.clone());
+        this.addToCollision(currentPos, radius);
+
+        for (let i = 1; i <= numPoints; i++) {
+            const step = segmentLen / numPoints;
+            let move = currentDir.clone();
+
+            // 1. Gravity / Bias (Enhanced range 0-2.0)
+            if (config.gravity > 0) {
+                const gravStrength = config.gravity * 0.15; // Tuned scaling
+                const gravVec = new THREE.Vector3(0, -1, 0).multiplyScalar(gravStrength);
+                move.add(gravVec);
+            }
+
+            // 2. Surface Constraint
+            if (sphereRadius > 0) {
+                const predicted = currentPos.clone().add(move.clone().multiplyScalar(step));
+                const dist = predicted.length();
+                if (dist < sphereRadius + 15) {
+                    const target = predicted.clone().normalize().multiplyScalar(sphereRadius);
+                    const pull = target.sub(predicted).multiplyScalar(0.2);
+                    move.add(pull);
+                }
+            }
+
+            // 3. Collision Repulsion (Adjustable)
+            const repulsion = this.getRepulsion(currentPos, radius * 2.5);
+            move.add(repulsion.multiplyScalar(config.repulsion));
+
+            move.normalize();
+            currentDir.copy(move);
+            currentPos.add(move.multiplyScalar(step));
+            pathPoints.push(currentPos.clone());
+            
+            if (i % 2 === 0) this.addToCollision(currentPos, radius);
+        }
+
+        const curve = new THREE.CatmullRomCurve3(pathPoints);
+        curve.curveType = 'catmullrom';
+        curve.tension = 0.4; 
+
+        const endRadius = radius * 0.9; 
+
+        segments.push({
+            curve: curve,
+            rStart: radius,
+            rEnd: endRadius,
+            depth: depth,
+            isRoot: (depth === 0),
+            isLeaf: false 
+        });
+
+        const lastSegment = segments[segments.length - 1];
+
+        // Bifurcation
+        let numBranches = 2;
+        if (type === 'TRUNK' && config.type === 'lca' && config.mode !== 'manual') numBranches = 2; 
+        
+        let hasChildren = false;
+
+        if (depth < maxDepth - 1) {
+            hasChildren = true;
+            for (let b = 0; b < numBranches; b++) {
+                const splitFactor = this.rng.range(0.65, 0.85);
+                const childRadius = endRadius * splitFactor;
+
+                // Angular Control
+                const baseAngle = config.branchAngle || 0.6; // Mean angle
+                const angleVar = 0.2; // Variance
+                const deviation = this.rng.range(baseAngle - angleVar, baseAngle + angleVar); 
+                
+                const up = new THREE.Vector3(0,1,0);
+                if (Math.abs(currentDir.y) > 0.95) up.set(1,0,0);
+                const right = new THREE.Vector3().crossVectors(currentDir, up).normalize();
+                
+                const fanAngle = (b / numBranches) * Math.PI * 2 + (depth + this.rng.next());
+                const axis = right.clone().applyAxisAngle(currentDir, fanAngle).normalize();
+                
+                const childDir = currentDir.clone().applyAxisAngle(axis, deviation).normalize();
+                const childLen = segmentLen * 0.85;
+
+                this.growBranch(currentPos, childDir, childRadius, childLen, depth + 1, maxDepth, segments, config, sphereRadius, 'BRANCH');
+            }
+        }
+        
+        if (!hasChildren) lastSegment.isLeaf = true;
+    }
+
+    addToCollision(pos, radius) {
+        this.collisionPoints.push({ pos: pos, r: radius });
+    }
+
+    getRepulsion(pos, checkDist) {
+        const force = new THREE.Vector3(0,0,0);
+        const count = this.collisionPoints.length;
+        const skipCount = 15; // Ignore self-segment
+        
+        for (let i = 0; i < count - skipCount; i++) {
+            const other = this.collisionPoints[i];
+            const dSq = pos.distanceToSquared(other.pos);
+            const minDist = checkDist + other.r;
+            
+            if (dSq < minDist * minDist) {
+                const d = Math.sqrt(dSq);
+                const push = pos.clone().sub(other.pos).normalize();
+                push.multiplyScalar((minDist - d) / minDist);
+                force.add(push);
+            }
+        }
+        return force;
+    }
+
+    eulerToVec(rotY, rotZ) {
+        // Convert user Euler angles (Degrees) to Vector
+        const euler = new THREE.Euler(0, rotY * Math.PI/180, rotZ * Math.PI/180, 'YZX');
+        return new THREE.Vector3(0, 1, 0).applyEuler(euler).normalize();
+    }
+}
+
+// --- MESH BUILDER (SAME ROBUST LOGIC) ---
+
+class MeshBuilder {
+    constructor() {
+        this.group = new THREE.Group();
+        this.group.name = "FluidDomain";
+        this.matWall = new THREE.MeshPhongMaterial({ color: 0xd12a45, shininess: 60, specular: 0x222222, side: THREE.DoubleSide });
+        this.matInlet = new THREE.MeshBasicMaterial({ color: 0x3b82f6, side: THREE.DoubleSide });
+        this.matOutlet = new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide });
+    }
+
+    build(data, resolution) {
+        this.group.clear();
+        const segments = data.segments;
+
+        segments.forEach(seg => {
+            const isChild = !seg.isRoot;
+            const parentRadApprox = seg.rStart * 1.35; 
+            
+            const tubGeom = this.createBlendedTube(
+                seg.curve, 
+                Math.max(12, Math.floor(seg.curve.getLength())), 
+                resolution, 
+                seg.rStart, 
+                seg.rEnd,
+                isChild,
+                parentRadApprox
+            );
+            const mesh = new THREE.Mesh(tubGeom, this.matWall);
+            this.group.add(mesh);
+
+            if (seg.isRoot) this.addCap(seg.curve, 0, seg.rStart, resolution, this.matInlet);
+            if (seg.isLeaf) this.addCap(seg.curve, 1, seg.rEnd, resolution, this.matOutlet);
+        });
+
+        if (data.sphereRadius > 0) {
+            const heartGeo = new THREE.SphereGeometry(data.sphereRadius, 32, 32);
+            heartGeo.scale(1, 1.25, 1);
+            const heartMat = new THREE.MeshBasicMaterial({ color: 0x330000, transparent: true, opacity: 0.15, wireframe: true });
+            this.group.add(new THREE.Mesh(heartGeo, heartMat));
+        }
+        return this.group;
+    }
+
+    addCap(curve, t, radius, resolution, mat) {
+        const point = curve.getPointAt(t);
+        const tangent = curve.getTangentAt(t);
+        const capGeom = new THREE.CircleGeometry(radius, resolution);
+        const cap = new THREE.Mesh(capGeom, mat);
+        cap.position.copy(point);
+        cap.lookAt(point.clone().add(tangent));
+        this.group.add(cap);
+    }
+
+    createBlendedTube(curve, tubularSegments, radialSegments, rStart, rEnd, isChild, parentRad) {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [], normals = [], indices = [];
+        const frames = curve.computeFrenetFrames(tubularSegments, false);
+
+        for (let i = 0; i <= tubularSegments; i++) {
+            const t = i / tubularSegments;
+            let radius = lerp(rStart, rEnd, t);
+            if (isChild) {
+                const gap = Math.max(0, parentRad - rStart);
+                const flare = gaussian(t, gap * 0.8, 0, 0.1); 
+                radius += flare;
+            }
+            const P = curve.getPointAt(t);
+            const N = frames.normals[i];
+            const B = frames.binormals[i];
+
+            for (let j = 0; j <= radialSegments; j++) {
+                const v = (j / radialSegments) * Math.PI * 2;
+                const sin = Math.sin(v), cos = Math.cos(v);
+                const nx = (cos * N.x + sin * B.x), ny = (cos * N.y + sin * B.y), nz = (cos * N.z + sin * B.z);
+                vertices.push(P.x + radius * nx, P.y + radius * ny, P.z + radius * nz);
+                normals.push(nx, ny, nz);
+            }
+        }
+
+        for (let j = 1; j <= tubularSegments; j++) {
+            for (let i = 1; i <= radialSegments; i++) {
+                const a = (radialSegments + 1) * (j - 1) + (i - 1);
+                const b = (radialSegments + 1) * j + (i - 1);
+                const c = (radialSegments + 1) * j + i;
+                const d = (radialSegments + 1) * (j - 1) + i;
+                indices.push(a, b, d); indices.push(b, c, d);
+            }
+        }
+        geometry.setIndex(indices);
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        return geometry;
+    }
+}
+
+// --- APP CONTROLLER ---
+
+class App {
+    constructor() {
+        this.canvas = document.getElementById('main-canvas');
+        this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 5000);
+        this.camera.position.set(0, 50, 180);
+        
+        this.controls = new THREE.OrbitControls(this.camera, this.canvas);
+        this.controls.enableDamping = true;
+        this.controls.autoRotate = true;
+        this.controls.autoRotateSpeed = 0.5;
+
+        // Lights & Environment
+        const amb = new THREE.AmbientLight(0x404040, 1.0);
+        this.scene.add(amb);
+        const dir = new THREE.DirectionalLight(0xffffff, 1.5);
+        dir.position.set(50, 100, 50);
+        this.scene.add(dir);
+        this.grid = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
+        this.scene.add(this.grid);
+
+        // Gravity Helper
+        this.gravHelper = new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(0,50,0), 30, 0xffff00);
+        this.gravHelper.visible = false;
+        this.scene.add(this.gravHelper);
+
+        this.gen = new BioGenerator();
+        this.builder = new MeshBuilder();
+        
+        this.params = {
+            mode: 'procedural',
+            type: 'lca',
+            radius: 3.8,
+            density: 3,
+            tortuosity: 0.4,
+            gravity: 0.3,
+            repulsion: 0.8,
+            branchAngle: 0.6,
+            lengthVar: 0.2,
+            seed: 12345,
+            manualTrunks: [
+                { id: 1, x: 0, y: 45, z: 0, rotY: 0, rotZ: 180, radius: 4.0, length: 15 }
+            ]
+        };
+
+        this.centerlineGroup = new THREE.Group();
+        this.scene.add(this.centerlineGroup);
+        this.centerlineGroup.visible = false;
+
+        this.renderManualUI();
+        this.regenerate();
+
+        window.addEventListener('resize', () => {
+            this.camera.aspect = window.innerWidth/window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        this.animate();
+    }
+
+    // --- LOGIC ---
+
+    switchTab(tab) {
+        this.params.mode = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        // Find button by text mostly or index
+        const btnIdx = tab === 'procedural' ? 0 : 1;
+        document.querySelectorAll('.tab-btn')[btnIdx].classList.add('active');
+        document.getElementById(`tab-${tab}`).classList.add('active');
+        
+        this.regenerate();
+    }
+
+    loadPreset(val) {
+        this.params.type = val;
+        this.regenerate();
+    }
+
+    updateParam(key, val) {
+        this.params[key] = parseFloat(val);
+        // UI updates
+        const ids = {
+            'radius': 'val-rad', 'density': 'val-den', 'tortuosity': 'val-tort',
+            'gravity': 'val-grav', 'repulsion': 'val-rep', 'branchAngle': 'val-ang',
+            'lengthVar': 'val-lenvar', 'seed': 'seed-input'
+        };
+        if(ids[key]) {
+            const el = document.getElementById(ids[key]);
+            if(el.tagName === 'INPUT') el.value = val;
+            else el.innerText = val;
+        }
+        
+        this.updateGravityHelper();
+        clearTimeout(this.regenTimer);
+        this.regenTimer = setTimeout(() => this.regenerate(), 50);
+    }
+
+    updateGravityHelper() {
+        this.gravHelper.setLength(20 + this.params.gravity * 50);
+    }
+
+    randomizeSeed() {
+        const seed = Math.floor(Math.random()*99999);
+        this.updateParam('seed', seed);
+    }
+
+    toggleCenterlines() {
+        this.centerlineGroup.visible = !this.centerlineGroup.visible;
+        document.getElementById('toggle-cl').classList.toggle('active');
+    }
+
+    toggleGravityHelper() {
+        this.gravHelper.visible = !this.gravHelper.visible;
+        document.getElementById('toggle-grav').classList.toggle('active');
+    }
+
+    forceRegenerate() { this.regenerate(); }
+
+    regenerateNewSeed() { this.randomizeSeed(); }
+
+    regenerate() {
+        if(this.currentMesh) this.scene.remove(this.currentMesh);
+        this.centerlineGroup.clear();
+        
+        const data = this.gen.generateTree(this.params);
+        
+        this.currentMesh = this.builder.build(data, 16);
+        this.scene.add(this.currentMesh);
+
+        // Centerlines
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xffff00, depthTest: false, transparent: true, opacity: 0.5 });
+        data.segments.forEach(seg => {
+            const pts = seg.curve.getPoints(10);
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            this.centerlineGroup.add(new THREE.Line(geo, lineMat));
+        });
+    }
+
+    download() {
+        if(!this.currentMesh) return;
+        const exporter = new THREE.OBJExporter();
+        const res = exporter.parse(this.currentMesh);
+        const blob = new Blob([res], {type: 'text/plain'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `cfd_${this.params.type}_${this.params.seed}.obj`;
+        link.click();
+    }
+
+    // --- MANUAL BUILDER UI ---
+
+    addManualTrunk() {
+        const id = Date.now();
+        this.params.manualTrunks.push({ id, x:0, y:45, z:0, rotY:0, rotZ:180, radius:4.0, length:15 });
+        this.renderManualUI();
+        this.regenerate();
+    }
+
+    removeManualTrunk(id) {
+        this.params.manualTrunks = this.params.manualTrunks.filter(t => t.id !== id);
+        this.renderManualUI();
+        this.regenerate();
+    }
+
+    updateManualTrunk(id, key, val) {
+        const t = this.params.manualTrunks.find(t => t.id === id);
+        if(t) {
+            t[key] = parseFloat(val);
+            this.regenerate();
+        }
+    }
+
+    renderManualUI() {
+        const container = document.getElementById('manual-trunks-list');
+        container.innerHTML = '';
+        
+        this.params.manualTrunks.forEach((t, i) => {
+            const div = document.createElement('div');
+            div.className = 'trunk-item';
+            div.innerHTML = `
+                <div class="trunk-header" onclick="this.parentElement.classList.toggle('open')">
+                    <span class="text-[10px] font-bold text-white">TRUNK #${i+1}</span>
+                    <button class="text-red-500 hover:text-white" onclick="event.stopPropagation(); window.app.removeManualTrunk(${t.id})">×</button>
+                </div>
+                <div class="trunk-body">
+                    <div class="control-label"><span>Position (X/Y/Z)</span></div>
+                    <div class="flex gap-1 mb-2">
+                        <input type="number" value="${t.x}" onchange="window.app.updateManualTrunk(${t.id}, 'x', this.value)">
+                        <input type="number" value="${t.y}" onchange="window.app.updateManualTrunk(${t.id}, 'y', this.value)">
+                        <input type="number" value="${t.z}" onchange="window.app.updateManualTrunk(${t.id}, 'z', this.value)">
+                    </div>
+                    <div class="control-label"><span>Rotation (Y/Z)</span></div>
+                    <div class="flex gap-1 mb-2">
+                        <input type="number" value="${t.rotY}" onchange="window.app.updateManualTrunk(${t.id}, 'rotY', this.value)">
+                        <input type="number" value="${t.rotZ}" onchange="window.app.updateManualTrunk(${t.id}, 'rotZ', this.value)">
+                    </div>
+                    <div class="control-label"><span>Dim (Len/Rad)</span></div>
+                    <div class="flex gap-1">
+                        <input type="number" value="${t.length}" onchange="window.app.updateManualTrunk(${t.id}, 'length', this.value)">
+                        <input type="number" value="${t.radius}" onchange="window.app.updateManualTrunk(${t.id}, 'radius', this.value)">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    animate() {
+        requestAnimationFrame(this.animate.bind(this));
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+window.onload = () => { window.app = new App(); };
+
+</script>
+</body>
+</html>
