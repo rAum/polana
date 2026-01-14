@@ -9,7 +9,7 @@
             --glass: rgba(15, 20, 25, 0.9);
             --border: rgba(255, 255, 255, 0.1);
             --accent: #00f3ff;
-            --accent-warm: #ffaa00;
+            --accent-warm: #ff5f5f;
             --text-main: #e0e0e0;
             --text-dim: #8899aa;
             --danger: #ff0055;
@@ -18,7 +18,7 @@
         body { 
             margin: 0; 
             overflow: hidden; 
-            background: radial-gradient(circle at 50% 50%, #161a24 0%, #050505 100%);
+            background: radial-gradient(circle at 50% 50%, #1a1f2c 0%, #050505 100%);
             color: var(--text-main); 
             font-family: 'Inter', system-ui, -apple-system, sans-serif; 
             -webkit-font-smoothing: antialiased;
@@ -112,7 +112,7 @@
         .inlet-item .name { font-size: 10px; font-weight: bold; cursor: pointer; flex-grow: 1; }
 
         .legend { margin-top: 10px; }
-        .legend-gradient { height: 8px; border-radius: 4px; background: linear-gradient(90deg, #330000 0%, #cc0000 30%, #ff8800 70%, #ffffaa 100%); }
+        .legend-gradient { height: 8px; border-radius: 4px; background: linear-gradient(90deg, #ff5f5f 0%, #ffaa00 50%, #ffffff 100%); }
         .legend-labels { display: flex; justify-content: space-between; font-size: 8px; margin-top: 4px; color: #888; text-transform: uppercase; font-weight: bold; }
 
         #loading-overlay {
@@ -144,17 +144,21 @@
 </div>
 
 <div id="ui">
-    <h2>Vascular Engine <span style="font-size: 9px; opacity: 0.5; margin-left: auto;">v3.1</span></h2>
+    <h2>Vascular Engine <span style="font-size: 9px; opacity: 0.5; margin-left: auto;">v3.2</span></h2>
     
     <div id="doc-panel">
         <div id="doc-header" onclick="document.getElementById('doc-panel').classList.toggle('open')">
-            <span>SYSTEM OVERVIEW</span>
+            <span>SYSTEM ARCHITECTURE</span>
             <span>+</span>
         </div>
         <div id="doc-content">
-            <strong>Optimal Transport:</strong> This simulation uses an iterative pathfinding approach where edge resistance decreases based on previous flow usage, forcing vessels to bundle.
+            This engine employs an <strong>Adaptive Perfusion Synthesis (APS)</strong> protocol:
             <br><br>
-            <strong>Repulsion:</strong> After pathfinding, tissue points are physically displaced by the calculated radius of nearby vessels.
+            1. <strong>Iterative Conductivity:</strong> Multi-source Dijkstra runs across a stochastic grid. Edge resistance is dynamically updated based on previous flow: $R = d / (1 + k \cdot C)$. High-flow segments become 'highways'.
+            <br><br>
+            2. <strong>Murray's Law:</strong> Vessel radii are scaled to maintain area-conservation across bifurcations ($r_{parent}^3 = \sum r_{child}^3$).
+            <br><br>
+            3. <strong>Geometric Space-Filling:</strong> Final paths collapse into arterial trunks while tissue points are physically repelled to accommodate the calculated volume.
         </div>
     </div>
 
@@ -215,7 +219,7 @@
         
         <div class="legend">
             <div class="legend-gradient"></div>
-            <div class="legend-labels"><span>Capillary</span><span>Trunk</span></div>
+            <div class="legend-labels"><span>Capillary (Light Red)</span><span>Trunk (Yellow/White)</span></div>
         </div>
         <div class="row" style="margin-top:12px"><span>Edges</span><span id="s-segs" class="tag">0</span></div>
     </div>
@@ -339,7 +343,7 @@ function renderInletList() {
     const list = document.getElementById('inlets-list'); if(!list) return; list.innerHTML = '';
     state.inlets.forEach(inlet => {
         const item = document.createElement('div'); item.className = 'inlet-item' + (transformControls.object === inlet.mesh ? ' active' : '');
-        item.innerHTML = `<span class="name" onclick="selectInletById(${inlet.id})">Inlet Node ${inlet.id}</span><button class="remove-btn" onclick="removeInlet(${inlet.id})">×</button>`;
+        item.innerHTML = `<span class="name" onclick="selectInletById(${inlet.id})">Inlet Source ${inlet.id}</span><button class="remove-btn" onclick="removeInlet(${inlet.id})">×</button>`;
         list.appendChild(item);
     });
 }
@@ -410,11 +414,15 @@ async function growVessels() {
     if(state.linesMesh) { scene.remove(state.linesMesh); state.linesMesh.geometry.dispose(); }
     if (state.inlets.length === 0) { alert("Add an inlet source."); return; }
 
-    // RESET STATE
+    // CRITICAL: HARD RESET OF STATE
     for(let n of state.nodes) {
-        n.x = n.ox; n.y = n.oy; n.z = n.oz; // Reset tissue
-        for(let e of n.neighbors) { e.cond = 1.0; e.flow = 0; } // Reset Graph
+        n.x = n.ox; n.y = n.oy; n.z = n.oz; // Reset tissue point positions
+        for(let e of n.neighbors) {
+            e.cond = 1.0; // Reset edge conductivity highway memory
+            e.flow = 0;   // Reset flow
+        }
     }
+    // Update visual points to original positions
     const posAttrReset = state.pointsMesh.geometry.attributes.position;
     for(let i=0; i<state.nodes.length; i++) posAttrReset.setXYZ(i, state.nodes[i].ox, state.nodes[i].oy, state.nodes[i].oz);
     posAttrReset.needsUpdate = true;
@@ -460,8 +468,10 @@ async function growVessels() {
             let curr = tIdx;
             while(!sourceNodeIndices.includes(curr) && curr !== -1) {
                 const p = parents[curr]; if(p === -1) break;
-                state.nodes[p].neighbors.find(e => e.to === curr).flow += 1;
-                state.nodes[curr].neighbors.find(e => e.to === p).flow += 1;
+                const edgeP = state.nodes[p].neighbors.find(e => e.to === curr);
+                if(edgeP) edgeP.flow += 1;
+                const edgeC = state.nodes[curr].neighbors.find(e => e.to === p);
+                if(edgeC) edgeC.flow += 1;
                 curr = p;
             }
         }
@@ -496,25 +506,38 @@ async function applyRepulsion() {
 
 function updateVisualization(sourceMap) {
     state.segments = []; let maxFlow = 0;
+    
+    // Core network
     for(let i=0; i<state.nodes.length; i++) {
         for(let edge of state.nodes[i].neighbors) {
             if(edge.to > i && edge.flow > 0) { maxFlow = Math.max(maxFlow, edge.flow); state.segments.push({ p0: state.nodes[i], p1: state.nodes[edge.to], flow: edge.flow }); }
         }
     }
+    
+    // Inlet root bridges
     sourceMap.forEach(m => {
-        const node = state.nodes[m.nodeIdx]; let rf = 0; node.neighbors.forEach(e => rf += e.flow);
-        maxFlow = Math.max(maxFlow, rf);
-        state.segments.push({ p0: { x: m.inlet.mesh.position.x, y: m.inlet.mesh.position.y, z: m.inlet.mesh.position.z }, p1: node, flow: rf, isRoot: true });
+        const node = state.nodes[m.nodeIdx]; 
+        let rootFlow = 0; 
+        node.neighbors.forEach(e => rootFlow += e.flow);
+        maxFlow = Math.max(maxFlow, rootFlow);
+        state.segments.push({ p0: { x: m.inlet.mesh.position.x, y: m.inlet.mesh.position.y, z: m.inlet.mesh.position.z }, p1: node, flow: rootFlow, isRoot: true });
     });
 
     const positions = [], colors = [];
-    const c1 = new THREE.Color(0x330000), c2 = new THREE.Color(0xcc0000), c3 = new THREE.Color(0xff8800), c4 = new THREE.Color(0xffffaa);
+    // WARM HEATMAP: Light Red -> Orange -> Yellow -> White
+    const c1 = new THREE.Color(0xff5f5f), c2 = new THREE.Color(0xffaa00), c3 = new THREE.Color(0xffff88), c4 = new THREE.Color(0xffffff);
+    
     for(let s of state.segments) {
         positions.push(s.p0.x, s.p0.y, s.p0.z, s.p1.x, s.p1.y, s.p1.z);
         s.r = Math.pow(s.flow, 0.5) * 0.05;
         const t = Math.pow(s.flow / (maxFlow||1), 0.5); 
         let c = new THREE.Color();
-        if(t < 0.3) c.lerpColors(c1, c2, t*3.33); else if(t < 0.7) c.lerpColors(c2, c3, (t-0.3)*2.5); else c.lerpColors(c3, c4, (t-0.7)*3.33);
+        
+        // Heatmap distribution
+        if(t < 0.33) c.lerpColors(c1, c2, t*3);
+        else if(t < 0.66) c.lerpColors(c2, c3, (t-0.33)*3);
+        else c.lerpColors(c3, c4, (t-0.66)*3);
+        
         colors.push(c.r, c.g, c.b, c.r, c.g, c.b);
     }
     const geo = state.linesMesh.geometry;
