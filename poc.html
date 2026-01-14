@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Octopath Agentic Prototype - Full Sim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; background-color: #1a1a2e; color: #eee; font-family: 'Inter', sans-serif; overflow: hidden; }
+        canvas { display: block; }
+        .pixel-text { font-family: 'Courier New', Courier, monospace; }
+        .thought-bubble {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 2px solid #222;
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.15);
+            color: #111;
+        }
+        .monitor-glow {
+            text-shadow: 0 0 10px rgba(255, 180, 50, 0.8);
+        }
+        #ui-root { text-rendering: pixelated; }
+        .agent-log-item { border-left: 3px solid transparent; transition: all 0.3s; }
+        .agent-log-item.active { border-left-color: #f97316; background: rgba(249, 115, 22, 0.05); }
+    </style>
+</head>
+<body>
+
+    <!-- UI Overlay -->
+    <div id="ui-root" class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-6">
+        <!-- Top Bar -->
+        <div class="flex justify-between items-start">
+            <div class="thought-bubble p-4 rounded-sm border-orange-500 border-l-8">
+                <h1 class="text-xs uppercase tracking-widest text-orange-600 font-black mb-1">Simulated Realm v2.0</h1>
+                <p class="text-sm pixel-text font-bold">Location: The Golden Outpost</p>
+                <div class="flex gap-4 mt-2">
+                    <div class="text-[10px] uppercase font-bold text-neutral-500">Entities: <span id="entity-count" class="text-orange-600">--</span></div>
+                    <div class="text-[10px] uppercase font-bold text-neutral-500">Weather: <span class="text-blue-500">Sunny</span></div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col gap-2 items-end">
+                <div class="thought-bubble px-4 py-2 rounded-full flex items-center gap-2 border-none bg-orange-500 text-white shadow-lg">
+                    <div class="w-2 h-2 rounded-full bg-white animate-ping"></div>
+                    <span class="text-[10px] uppercase font-bold tracking-tighter">Multi-Agent Brain Active</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Thought (Dynamic Projection) -->
+        <div id="agent-display" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-64 text-center transition-all duration-500 opacity-0 scale-90">
+            <div class="thought-bubble p-4 rounded-lg max-w-xs relative border-4 border-orange-400">
+                <div class="text-[10px] uppercase font-black text-orange-500 mb-1" id="agent-name-tag">Hero</div>
+                <div id="agent-thought" class="text-sm font-medium italic text-neutral-800 leading-tight">"..."</div>
+                <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rotate-45 bg-white border-r-4 border-b-4 border-orange-400"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar: Multi-Agent Stream -->
+        <div class="w-full max-w-xl mx-auto mb-4">
+            <div class="thought-bubble p-4 rounded-lg border-2 border-black/10">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] uppercase font-black text-orange-600">Global Action Stream</span>
+                    <span class="text-[10px] opacity-40 font-bold" id="sim-time">00:00:00</span>
+                </div>
+                <div id="log-container" class="h-32 overflow-y-auto text-[11px] pixel-text space-y-1 font-bold pr-2">
+                    <!-- Logs injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="absolute bottom-6 right-6 z-20 flex flex-col gap-3 pointer-events-auto">
+        <button onclick="cycleCamera()" class="thought-bubble p-4 rounded-lg hover:bg-orange-100 transition-all cursor-pointer bg-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+        </button>
+        <button onclick="triggerGlobalThink()" class="thought-bubble p-4 rounded-lg hover:scale-105 transition-all cursor-pointer bg-orange-500 text-white border-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+        </button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/examples/jsm/postprocessing/EffectComposer": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js",
+                "three/examples/jsm/postprocessing/RenderPass": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js",
+                "three/examples/jsm/postprocessing/UnrealBloomPass": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js",
+                "three/examples/jsm/postprocessing/BokehPass": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/BokehPass.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+        import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
+        import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+        import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass';
+
+        // --- WORLD CONFIG ---
+        const SPRITES = {
+            HERO_RED: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/37.png',
+            HERO_YELLOW: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/25.png',
+            HERO_EEVEE: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/133.png',
+            NPC_MAN: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/122.png',
+            ANIMAL_BIRD: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/16.png',
+            ANIMAL_RAT: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/19.png'
+        };
+
+        let scene, camera, renderer, composer, worldGroup;
+        let viewMode = 0; // 0: Cinematic, 1-3: Heroes
+        let entities = [];
+        const loader = new THREE.TextureLoader();
+
+        // --- INITIALIZATION ---
+        function init() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0xffe4b5, 0.012);
+            scene.background = new THREE.Color(0xfff5e6);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 20);
+
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+            const sun = new THREE.DirectionalLight(0xffe0ac, 2.5);
+            sun.position.set(20, 40, 20);
+            sun.castShadow = true;
+            sun.shadow.camera.left = -40; sun.shadow.camera.right = 40;
+            sun.shadow.camera.top = 40; sun.shadow.camera.bottom = -40;
+            sun.shadow.mapSize.set(2048, 2048);
+            scene.add(sun);
+
+            worldGroup = new THREE.Group();
+            scene.add(worldGroup);
+
+            setupEnvironment();
+            spawnEntities();
+            setupPostProcessing();
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        // --- ENVIRONMENT BUILDER ---
+        function setupEnvironment() {
+            // Grass Floor
+            const grassTex = loader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+            grassTex.magFilter = THREE.NearestFilter;
+            grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+            grassTex.repeat.set(32, 32);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ map: grassTex, color: 0x99cc44 }));
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            worldGroup.add(floor);
+
+            // Houses
+            for(let i = 0; i < 4; i++) {
+                const house = createHouse();
+                house.position.set(
+                    i % 2 === 0 ? 15 : -15, 
+                    0, 
+                    i < 2 ? 15 : -15
+                );
+                worldGroup.add(house);
+            }
+
+            // Foliage & Rocks
+            for(let i = 0; i < 100; i++) {
+                const type = Math.random();
+                if (type < 0.7) createFoliage();
+                else createRock();
+            }
+        }
+
+        function createHouse() {
+            const group = new THREE.Group();
+            // Walls
+            const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), new THREE.MeshStandardMaterial({ color: 0xddccbb }));
+            walls.position.y = 2;
+            walls.castShadow = true;
+            walls.receiveShadow = true;
+            group.add(walls);
+            // Roof
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(5.5, 4, 4), new THREE.MeshStandardMaterial({ color: 0x884422 }));
+            roof.position.y = 6;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            group.add(roof);
+            return group;
+        }
+
+        function createFoliage() {
+            const spriteTex = loader.load('https://threejs.org/examples/textures/sprites/snowflake7.png');
+            spriteTex.magFilter = THREE.NearestFilter;
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: new THREE.Color().setHSL(0.2 + Math.random() * 0.1, 0.7, 0.45),
+                transparent: true, alphaTest: 0.5, map: spriteTex
+            });
+            const bush = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+            bush.position.set((Math.random() - 0.5) * 80, 1, (Math.random() - 0.5) * 80);
+            bush.castShadow = true;
+            bush.onBeforeRender = function() { 
+                this.rotation.y = Math.atan2(camera.position.x - this.position.x, camera.position.z - this.position.z);
+            };
+            worldGroup.add(bush);
+        }
+
+        function createRock() {
+            const rock = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(Math.random() * 1.5), 
+                new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 1 })
+            );
+            rock.position.set((Math.random() - 0.5) * 80, 0.5, (Math.random() - 0.5) * 80);
+            rock.rotation.set(Math.random(), Math.random(), Math.random());
+            rock.castShadow = true;
+            rock.receiveShadow = true;
+            worldGroup.add(rock);
+        }
+
+        // --- ENTITY SYSTEM ---
+        function spawnEntities() {
+            // Heroes
+            addEntity('Vulpix', SPRITES.HERO_RED, 'HERO', new THREE.Vector3(0, 1, 0));
+            addEntity('Pika', SPRITES.HERO_YELLOW, 'HERO', new THREE.Vector3(5, 1, 5));
+            addEntity('Eevee', SPRITES.HERO_EEVEE, 'HERO', new THREE.Vector3(-5, 1, 3));
+            
+            // NPCs
+            for(let i = 0; i < 3; i++) addEntity(`Villager ${i+1}`, SPRITES.NPC_MAN, 'NPC');
+            
+            // Animals
+            for(let i = 0; i < 5; i++) {
+                addEntity('Bird', SPRITES.ANIMAL_BIRD, 'ANIMAL');
+                addEntity('Rat', SPRITES.ANIMAL_RAT, 'ANIMAL');
+            }
+            
+            document.getElementById('entity-count').innerText = entities.length;
+        }
+
+        function addEntity(name, url, type, pos = null) {
+            const tex = loader.load(url);
+            tex.magFilter = THREE.NearestFilter;
+            const mesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(2, 2),
+                new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.1, side: THREE.DoubleSide })
+            );
+            mesh.position.copy(pos || new THREE.Vector3((Math.random()-0.5)*40, 1, (Math.random()-0.5)*40));
+            mesh.castShadow = true;
+            
+            const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 12), new THREE.MeshBasicMaterial({ color: 0x000, transparent: true, opacity: 0.3 }));
+            shadow.rotation.x = -Math.PI/2;
+            shadow.position.y = -0.95;
+            mesh.add(shadow);
+            
+            scene.add(mesh);
+
+            const entity = {
+                name, type, mesh,
+                target: mesh.position.clone(),
+                state: 'IDLE',
+                timer: Math.random() * 5,
+                speed: type === 'HERO' ? 0.08 : (type === 'ANIMAL' ? 0.15 : 0.04),
+                update(delta, time) {
+                    // Billboard
+                    this.mesh.rotation.y = Math.atan2(camera.position.x - this.mesh.position.x, camera.position.z - this.mesh.position.z);
+                    
+                    // Simple Logic
+                    this.timer -= delta;
+                    if(this.timer <= 0) {
+                        this.state = Math.random() > 0.4 ? 'WANDER' : 'IDLE';
+                        this.timer = 3 + Math.random() * 5;
+                        if(this.state === 'WANDER') {
+                            this.target.set((Math.random()-0.5)*50, 1, (Math.random()-0.5)*50);
+                        }
+                    }
+
+                    if(this.state === 'WANDER') {
+                        const dir = this.target.clone().sub(this.mesh.position).normalize();
+                        if(this.mesh.position.distanceTo(this.target) > 0.5) {
+                            this.mesh.position.addScaledVector(dir, this.speed);
+                        }
+                    }
+                    
+                    // Float anim
+                    this.mesh.position.y = 1 + Math.sin(time * 3 + this.mesh.position.x) * 0.1;
+                }
+            };
+            entities.push(entity);
+        }
+
+        // --- POST PROCESSING ---
+        function setupPostProcessing() {
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+            
+            const bokeh = new BokehPass(scene, camera, { focus: 15.0, aperture: 0.00005, maxblur: 0.01 });
+            composer.addPass(bokeh);
+            
+            const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.4, 0.85);
+            composer.addPass(bloom);
+        }
+
+        // --- LOOP & EVENTS ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = performance.now() * 0.001;
+            const delta = 0.016;
+
+            entities.forEach(e => e.update(delta, time));
+
+            // Camera Logic
+            if(viewMode === 0) { // Cinematic
+                camera.position.x = Math.sin(time * 0.1) * 35;
+                camera.position.z = Math.cos(time * 0.1) * 35;
+                camera.position.y = 15 + Math.sin(time * 0.2) * 5;
+                camera.lookAt(0, 0, 0);
+            } else { // Follow Hero
+                const hero = entities[viewMode - 1];
+                const ideal = hero.mesh.position.clone().add(new THREE.Vector3(0, 8, 15));
+                camera.position.lerp(ideal, 0.05);
+                camera.lookAt(hero.mesh.position);
+            }
+
+            composer.render();
+            document.getElementById('sim-time').innerText = new Date().toTimeString().split(' ')[0];
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- SIMULATION COMMANDS ---
+        const heroThoughts = [
+            "I detect a high concentration of berry signals nearby.",
+            "Analyzing the NPC movements... they seem cyclical.",
+            "This meadow is surprisingly high resolution today.",
+            "My internal clock suggests it's time for an adventure.",
+            "I wonder if the other Heroes are following the same prompt."
+        ];
+
+        window.triggerGlobalThink = () => {
+            const heroes = entities.filter(e => e.type === 'HERO');
+            const actor = heroes[Math.floor(Math.random() * heroes.length)];
+            
+            const display = document.getElementById('agent-display');
+            const nameTag = document.getElementById('agent-name-tag');
+            const thought = document.getElementById('agent-thought');
+            const logs = document.getElementById('log-container');
+
+            nameTag.innerText = actor.name;
+            thought.innerText = heroThoughts[Math.floor(Math.random() * heroThoughts.length)];
+            display.style.opacity = '1';
+            display.style.transform = 'translate(-50%, -10px) scale(1)';
+
+            const log = document.createElement('div');
+            log.className = "agent-log-item active text-orange-600 p-1 rounded-sm";
+            log.innerHTML = `> [${actor.name}] reasoning: ${thought.innerText}`;
+            logs.prepend(log);
+
+            setTimeout(() => {
+                display.style.opacity = '0';
+                display.style.transform = 'translate(-50%, 0) scale(0.9)';
+                log.classList.remove('active');
+            }, 5000);
+        };
+
+        window.cycleCamera = () => {
+            viewMode = (viewMode + 1) % 4; // Cycles through Cinematic + 3 Heroes
+            const log = document.createElement('div');
+            log.className = "text-blue-500 italic";
+            log.innerText = `> Camera focal point changed: ${viewMode === 0 ? 'Cinematic Orbit' : entities[viewMode-1].name}`;
+            document.getElementById('log-container').prepend(log);
+        };
+
+        window.onload = init;
+        setInterval(() => { if(Math.random() > 0.8) triggerGlobalThink(); }, 8000);
+    </script>
+</body>
+</html>
