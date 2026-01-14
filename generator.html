@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vascular Forge | CFD Mesh Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+        
+        :root {
+            --bg-dark: #050505;
+            --panel-bg: rgba(15, 15, 20, 0.95);
+            --accent: #3b82f6; /* Tech Blue for CFD */
+            --accent-hover: #2563eb;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body { margin: 0; overflow: hidden; background-color: var(--bg-dark); font-family: 'Inter', sans-serif; color: #d4d4d8; }
+        
+        #main-canvas { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; outline: none; 
+            background: radial-gradient(circle at center, #1e1e24 0%, #000000 100%); 
+        }
+
+        /* Sidebar */
+        #sidebar {
+            position: absolute; top: 0; right: 0; width: 340px; height: 100%;
+            background: var(--panel-bg); border-left: 1px solid var(--border);
+            z-index: 20; display: flex; flex-direction: column;
+            backdrop-filter: blur(12px);
+        }
+
+        .panel-header { padding: 20px; border-bottom: 1px solid var(--border); }
+        .panel-section { padding: 16px; border-bottom: 1px solid var(--border); }
+        .panel-title { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #60a5fa; margin-bottom: 12px; letter-spacing: 0.05em; }
+
+        .control-group { margin-bottom: 12px; }
+        .control-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: #a1a1aa; }
+        
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%;
+            background: var(--accent); cursor: pointer; margin-top: -5px;
+        }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 2px; background: #3f3f46; }
+
+        select {
+            width: 100%; background: #27272a; border: 1px solid #3f3f46; color: white;
+            padding: 8px; border-radius: 4px; font-size: 12px; outline: none;
+        }
+
+        .btn {
+            width: 100%; padding: 10px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.05em; transition: all 0.2s; border: none; cursor: pointer;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+        .btn-sec { background: transparent; border: 1px solid #3f3f46; color: #a1a1aa; margin-top: 8px; }
+        .btn-sec:hover { border-color: #71717a; color: white; }
+        
+        /* Toggle Switch */
+        .toggle-switch { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #a1a1aa; cursor: pointer; }
+        .toggle-track { width: 32px; height: 16px; background: #3f3f46; border-radius: 8px; position: relative; transition: 0.2s; }
+        .toggle-knob { width: 12px; height: 12px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; }
+        .active .toggle-track { background: var(--accent); }
+        .active .toggle-knob { left: 18px; }
+
+    </style>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
+</head>
+<body>
+
+    <div class="absolute top-6 left-6 z-10 pointer-events-none">
+        <h1 class="text-2xl font-light text-white tracking-tight">VASCULAR<span class="font-bold text-blue-500">FORGE</span></h1>
+        <div class="text-[10px] text-zinc-500 mt-1 font-mono">CFD FLUID DOMAIN ENGINE v5.0</div>
+    </div>
+
+    <div id="sidebar">
+        <div class="panel-header">
+            <div class="panel-title">Fluid Domain Config</div>
+            <select id="preset-select" onchange="window.app.loadPreset(this.value)">
+                <option value="coronary">Coronary Arteries (Scale: mm)</option>
+                <option value="aorta">Abdominal Aorta (Scale: mm)</option>
+                <option value="carotid">Carotid Bifurcation (Scale: mm)</option>
+            </select>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">Geometry Rules</div>
+            
+            <div class="control-group">
+                <div class="control-label"><span>Base Diameter (mm)</span><span id="val-rad">4.0</span></div>
+                <input type="range" min="1.0" max="25.0" step="0.5" value="4.0" oninput="window.app.updateParam('radius', this.value)">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label"><span>Tree Complexity</span><span id="val-den">3</span></div>
+                <input type="range" min="1" max="5" step="1" value="3" oninput="window.app.updateParam('density', this.value)">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label"><span>Tortuosity (Noise)</span><span id="val-tort">0.3</span></div>
+                <input type="range" min="0" max="1.0" step="0.1" value="0.3" oninput="window.app.updateParam('tortuosity', this.value)">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">Visualization</div>
+            <div class="control-group" onclick="window.app.toggleCenterlines()">
+                <div class="toggle-switch" id="toggle-cl">
+                    <span>Show Centerlines</span>
+                    <div class="toggle-track"><div class="toggle-knob"></div></div>
+                </div>
+            </div>
+            <div class="text-[10px] text-zinc-500 mt-2">
+                <span class="text-blue-500">■ Inlet</span> 
+                <span class="text-green-500 ml-2">■ Outlet</span> 
+                <span class="text-red-500 ml-2">■ Wall</span>
+            </div>
+        </div>
+
+        <div class="p-5 mt-auto border-t border-white/5 bg-black/20">
+            <button class="btn btn-primary" onclick="window.app.regenerate()">Rebuild Volume</button>
+            <button class="btn btn-sec" onclick="window.app.download()">Export CFD (.obj)</button>
+        </div>
+    </div>
+
+    <canvas id="main-canvas"></canvas>
+
+<script>
+/**
+ * VASCULAR FORGE v5.0
+ * CFD-Ready Fluid Domain Generator
+ * Scale: Metric (mm)
+ */
+
+// --- UTILS ---
+const lerp = (a, b, t) => a + (b - a) * t;
+// Ease in-out for smoother radius transitions
+const easeInOutQuad = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+class SeededRandom {
+    constructor(seed = 12345) { this.seed = seed; }
+    next() {
+        this.seed = (this.seed * 9301 + 49297) % 233280;
+        return this.seed / 233280;
+    }
+    nextSigned() { return this.next() * 2 - 1; }
+}
+
+// --- BIOLOGICAL GENERATOR ---
+
+class BioGenerator {
+    constructor() {
+        this.rng = new SeededRandom(42);
+    }
+
+    generateTree(config) {
+        this.rng = new SeededRandom(42 + config.tortuosity * 100);
+        const segments = [];
+        const scale = 1.0; // 1 unit = 1mm
+
+        let roots = [];
+
+        // Real world dimensions (approximate)
+        if (config.type === 'coronary') {
+            const heartRadius = 40; // 40mm radius heart approximation
+            const rootPos = new THREE.Vector3(0, heartRadius + 10, 0);
+            
+            // Left Main
+            roots.push({
+                pos: rootPos.clone(),
+                dir: new THREE.Vector3(0.2, -1, 0.2).normalize(),
+                radius: config.radius, // ~4mm
+                length: 15,
+                type: 'ROOT'
+            });
+        } 
+        else if (config.type === 'aorta') {
+             roots.push({
+                pos: new THREE.Vector3(0, 100, 0),
+                dir: new THREE.Vector3(0, -1, 0).normalize(),
+                radius: config.radius, // ~20mm
+                length: 120,
+                type: 'ROOT'
+            });
+        }
+        else {
+            // Carotid / Generic
+            roots.push({
+                pos: new THREE.Vector3(0, -50, 0),
+                dir: new THREE.Vector3(0, 1, 0),
+                radius: config.radius, // ~6mm
+                length: 40,
+                type: 'ROOT'
+            });
+        }
+
+        const maxDepth = config.density + 2;
+
+        roots.forEach(root => {
+            this.growBranch(root.pos, root.dir, root.radius, root.length, 0, maxDepth, segments, config);
+        });
+
+        return segments;
+    }
+
+    growBranch(startPos, dir, radius, length, depth, maxDepth, segments, config) {
+        if (depth >= maxDepth || radius < 0.5) return;
+
+        // Path Generation with Tortuosity
+        const pathPoints = [];
+        const numPoints = Math.max(5, Math.floor(length / 2)); 
+        
+        let currentPos = startPos.clone();
+        let currentDir = dir.clone();
+        
+        pathPoints.push(currentPos.clone());
+
+        for (let i = 1; i <= numPoints; i++) {
+            const t = i / numPoints;
+            const step = length / numPoints;
+            let move = currentDir.clone().multiplyScalar(step);
+
+            // Wiggle
+            if (config.tortuosity > 0) {
+                const amp = config.tortuosity * (0.5 + depth * 0.3); // mm deviation
+                const freq = 0.5;
+                const wiggle = new THREE.Vector3(
+                    this.rng.nextSigned() * amp,
+                    this.rng.nextSigned() * amp,
+                    this.rng.nextSigned() * amp
+                );
+                // Smooth wiggle
+                wiggle.multiplyScalar(Math.sin(t * Math.PI)); 
+                move.add(wiggle);
+            }
+
+            currentDir = move.clone().normalize();
+            currentPos.add(move);
+            pathPoints.push(currentPos.clone());
+        }
+
+        const curve = new THREE.CatmullRomCurve3(pathPoints);
+        curve.curveType = 'catmullrom';
+        curve.tension = 0.5;
+
+        // Tapering
+        const endRadius = radius * 0.95; 
+
+        // Add Segment
+        const isRoot = (depth === 0);
+        
+        segments.push({
+            curve: curve,
+            rStart: radius,
+            rEnd: endRadius,
+            depth: depth,
+            isRoot: isRoot,
+            isLeaf: false // Will update later
+        });
+
+        const lastSegment = segments[segments.length - 1];
+
+        // Bifurcation
+        const numBranches = 2;
+        let hasChildren = false;
+
+        if (depth < maxDepth - 1) {
+            hasChildren = true;
+            for (let b = 0; b < numBranches; b++) {
+                // Split Ratio
+                const splitFactor = 0.7 + (this.rng.nextSigned() * 0.1);
+                const childRadius = endRadius * splitFactor;
+
+                // Branch Angle
+                const deviation = 0.4 + (this.rng.nextSigned() * 0.2); // Radians
+                
+                // Axis perpendicular to current dir
+                const up = new THREE.Vector3(0,1,0);
+                if (Math.abs(currentDir.y) > 0.9) up.set(1,0,0);
+                
+                // Rotate base axis
+                const axisBase = new THREE.Vector3().crossVectors(currentDir, up).normalize();
+                const axisRot = new THREE.Vector3().crossVectors(currentDir, axisBase).normalize();
+                
+                // Rotate around dir to fan out
+                const fanAngle = (b / numBranches) * Math.PI * 2 + (depth);
+                const axis = axisBase.clone().applyAxisAngle(currentDir, fanAngle).normalize();
+
+                const childDir = currentDir.clone().applyAxisAngle(axis, deviation).normalize();
+                const childLen = length * 0.85;
+
+                this.growBranch(currentPos, childDir, childRadius, childLen, depth + 1, maxDepth, segments, config);
+            }
+        }
+        
+        if (!hasChildren) {
+            lastSegment.isLeaf = true;
+        }
+    }
+}
+
+// --- MESH BUILDER ---
+
+class MeshBuilder {
+    constructor() {
+        this.group = new THREE.Group();
+        this.group.name = "FluidDomain";
+        
+        // Materials
+        this.matWall = new THREE.MeshPhongMaterial({ color: 0xaa0000, shininess: 60, specular: 0x222222, side: THREE.DoubleSide });
+        this.matInlet = new THREE.MeshBasicMaterial({ color: 0x0066ff, side: THREE.DoubleSide });
+        this.matOutlet = new THREE.MeshBasicMaterial({ color: 0x00ff66, side: THREE.DoubleSide });
+    }
+
+    build(segments, resolution) {
+        this.group.clear();
+
+        segments.forEach(seg => {
+            // 1. Vessel Wall
+            const tubGeom = this.createTube(seg.curve, Math.floor(seg.curve.getLength()), resolution, seg.rStart, seg.rEnd);
+            const mesh = new THREE.Mesh(tubGeom, this.matWall);
+            mesh.name = "Wall";
+            this.group.add(mesh);
+
+            // 2. Inlet Cap (Only for Root)
+            if (seg.isRoot) {
+                const startPoint = seg.curve.getPointAt(0);
+                const tangent = seg.curve.getTangentAt(0);
+                const capGeom = new THREE.CircleGeometry(seg.rStart, resolution);
+                const cap = new THREE.Mesh(capGeom, this.matInlet);
+                cap.name = "Inlet";
+                cap.position.copy(startPoint);
+                cap.lookAt(startPoint.clone().add(tangent));
+                this.group.add(cap);
+            }
+
+            // 3. Outlet Cap (Only for Leaves)
+            if (seg.isLeaf) {
+                const endPoint = seg.curve.getPointAt(1);
+                const tangent = seg.curve.getTangentAt(1);
+                const capGeom = new THREE.CircleGeometry(seg.rEnd, resolution);
+                const cap = new THREE.Mesh(capGeom, this.matOutlet);
+                cap.name = "Outlet";
+                cap.position.copy(endPoint);
+                cap.lookAt(endPoint.clone().add(tangent));
+                this.group.add(cap);
+            }
+
+            // 4. Joint Smoothing (Ellipsoid Blend)
+            if (!seg.isRoot) {
+                // At the start of this segment (which connects to parent end)
+                // We add a scaled sphere to approximate a fillet
+                const pos = seg.curve.getPointAt(0);
+                const tangent = seg.curve.getTangentAt(0);
+                
+                // Sphere slightly larger than start radius to cover gaps
+                const jointRadius = seg.rStart * 1.1; 
+                const sphereGeo = new THREE.SphereGeometry(jointRadius, resolution, Math.ceil(resolution/2));
+                
+                // Scale along the flow direction to blend better
+                sphereGeo.scale(1.0, 1.0, 1.2); 
+                
+                const joint = new THREE.Mesh(sphereGeo, this.matWall);
+                joint.name = "Wall_Joint";
+                joint.position.copy(pos);
+                joint.lookAt(pos.clone().add(tangent));
+                this.group.add(joint);
+            }
+        });
+
+        return this.group;
+    }
+
+    createTube(curve, tubularSegments, radialSegments, rStart, rEnd) {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const normals = [];
+        const indices = [];
+
+        const frames = curve.computeFrenetFrames(tubularSegments, false);
+
+        for (let i = 0; i <= tubularSegments; i++) {
+            const t = i / tubularSegments;
+            // Use Ease function for radius interpolation to make transitions smoother
+            const radius = lerp(rStart, rEnd, easeInOutQuad(t));
+
+            const P = curve.getPointAt(t);
+            const N = frames.normals[i];
+            const B = frames.binormals[i];
+
+            for (let j = 0; j <= radialSegments; j++) {
+                const v = (j / radialSegments) * Math.PI * 2;
+                const sin = Math.sin(v);
+                const cos = Math.cos(v);
+
+                const nx = (cos * N.x + sin * B.x);
+                const ny = (cos * N.y + sin * B.y);
+                const nz = (cos * N.z + sin * B.z);
+
+                const px = P.x + radius * nx;
+                const py = P.y + radius * ny;
+                const pz = P.z + radius * nz;
+
+                vertices.push(px, py, pz);
+                normals.push(nx, ny, nz);
+            }
+        }
+
+        for (let j = 1; j <= tubularSegments; j++) {
+            for (let i = 1; i <= radialSegments; i++) {
+                const a = (radialSegments + 1) * (j - 1) + (i - 1);
+                const b = (radialSegments + 1) * j + (i - 1);
+                const c = (radialSegments + 1) * j + i;
+                const d = (radialSegments + 1) * (j - 1) + i;
+
+                indices.push(a, b, d);
+                indices.push(b, c, d);
+            }
+        }
+
+        geometry.setIndex(indices);
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        return geometry;
+    }
+}
+
+// --- APP ---
+
+class App {
+    constructor() {
+        this.canvas = document.getElementById('main-canvas');
+        this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        this.scene = new THREE.Scene();
+        
+        // Camera setup for Metric Scale (larger clipping range)
+        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 5000);
+        this.camera.position.set(0, 50, 200);
+        
+        this.controls = new THREE.OrbitControls(this.camera, this.canvas);
+        this.controls.enableDamping = true;
+
+        // Lights
+        const amb = new THREE.AmbientLight(0x404040, 1.0);
+        this.scene.add(amb);
+        const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+        dir.position.set(50, 100, 50);
+        this.scene.add(dir);
+        const fill = new THREE.PointLight(0x3b82f6, 0.5, 200);
+        fill.position.set(-50, 0, -50);
+        this.scene.add(fill);
+
+        // Grid Helper (1 unit = 1mm)
+        // 100mm grid, 10mm subdivisions
+        this.grid = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
+        this.scene.add(this.grid);
+
+        this.gen = new BioGenerator();
+        this.builder = new MeshBuilder();
+        
+        this.params = {
+            type: 'coronary',
+            radius: 4.0,
+            density: 3,
+            tortuosity: 0.3,
+            resolution: 16
+        };
+
+        this.centerlineGroup = new THREE.Group();
+        this.scene.add(this.centerlineGroup);
+        this.centerlineGroup.visible = false;
+
+        this.regenerate();
+
+        window.addEventListener('resize', () => {
+            this.camera.aspect = window.innerWidth/window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        this.animate();
+    }
+
+    loadPreset(val) {
+        this.params.type = val;
+        // Adjust camera/radius defaults based on scale
+        if (val === 'aorta') {
+            this.params.radius = 20.0;
+            this.camera.position.set(0, 100, 400);
+        } else {
+            this.params.radius = 4.0;
+            this.camera.position.set(0, 50, 200);
+        }
+        document.getElementById('val-rad').innerText = this.params.radius;
+        document.querySelector('input[oninput*="radius"]').value = this.params.radius;
+        this.regenerate();
+    }
+
+    updateParam(key, val) {
+        this.params[key] = parseFloat(val);
+        const display = document.getElementById(key === 'resolution' ? 'val-res' : 
+                                               key === 'tortuosity' ? 'val-tort' :
+                                               key === 'density' ? 'val-den' : 'val-rad');
+        if(display) display.innerText = val;
+    }
+
+    toggleCenterlines() {
+        this.centerlineGroup.visible = !this.centerlineGroup.visible;
+        document.getElementById('toggle-cl').classList.toggle('active');
+    }
+
+    regenerate() {
+        if(this.currentMesh) this.scene.remove(this.currentMesh);
+        this.centerlineGroup.clear();
+        
+        // 1. Generate Logic
+        const segments = this.gen.generateTree(this.params);
+        
+        // 2. Build Mesh
+        this.currentMesh = this.builder.build(segments, this.params.resolution);
+        this.scene.add(this.currentMesh);
+
+        // 3. Build Centerlines Visuals
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xffff00, depthTest: false, transparent: true, opacity: 0.5 });
+        segments.forEach(seg => {
+            const pts = seg.curve.getPoints(20);
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, lineMat);
+            this.centerlineGroup.add(line);
+        });
+    }
+
+    download() {
+        if(!this.currentMesh) return;
+        const exporter = new THREE.OBJExporter();
+        const res = exporter.parse(this.currentMesh);
+        const blob = new Blob([res], {type: 'text/plain'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `cfd_domain_${this.params.type}.obj`;
+        link.click();
+    }
+
+    animate() {
+        requestAnimationFrame(this.animate.bind(this));
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+window.onload = () => { window.app = new App(); };
+
+</script>
+</body>
+</html>
