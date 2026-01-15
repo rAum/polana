@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bio-Digital Vascular Engine // V6.0</title>
+    <title>Bio-Digital Vascular Engine // V6.3</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -155,7 +155,7 @@
             <div id="doc-content">
                 <strong>Algorithm:</strong> CCO with Adaptive Conductivity.<br>
                 <strong>Flow Dynamics:</strong> $v \propto r^{1.5}$.<br>
-                <strong>Gravity:</strong> Paths optimized vs Directional Vector.
+                <strong>Gravity:</strong> Optimized vs 3D Vector Gizmo.
             </div>
         </div>
 
@@ -186,9 +186,17 @@
                 <button class="btn-tech" onclick="document.getElementById('file-input').click()">UPLOAD STL</button>
             </div>
             <input type="file" id="file-input" style="display:none" accept=".stl" onchange="handleFileUpload(event)">
-            <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px; font-size: 12px;">
-                <input type="checkbox" id="c-pts" checked onchange="togglePoints()" style="accent-color: var(--primary);">
-                <label for="c-pts" style="color: var(--text-muted); cursor: pointer;">SHOW TISSUE GRID</label>
+            
+            <!-- Visibility Toggles for Volume -->
+            <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px; font-size: 12px;">
+                    <input type="checkbox" id="c-pts" checked onchange="togglePoints()" style="accent-color: var(--primary);">
+                    <label for="c-pts" style="color: var(--text-muted); cursor: pointer;">SHOW TISSUE GRID</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; font-size: 12px;">
+                    <input type="checkbox" id="c-organ" checked onchange="toggleOrgan()" style="accent-color: var(--primary);">
+                    <label for="c-organ" style="color: var(--text-muted); cursor: pointer;">SHOW ORGAN SHELL</label>
+                </div>
             </div>
         </div>
 
@@ -220,6 +228,15 @@
                 <div class="label-row"><span>FLOW VELOCITY</span><span id="v-speed" class="value-display">0.02</span></div>
                 <input type="range" id="i-speed" min="0.001" max="0.1" step="0.001" value="0.02">
             </div>
+            <div class="control-group">
+                <div class="label-row">
+                    <span>VELOCITY PROFILE</span>
+                    <div class="help-icon">?</div>
+                    <div class="tooltip">Physiological (Positive) vs Constriction (Negative) velocity scaling based on radius.</div>
+                    <span id="v-profile" class="value-display">1.5</span>
+                </div>
+                <input type="range" id="i-profile" min="-2.0" max="3.0" step="0.5" value="1.5" oninput="document.getElementById('v-profile').innerText = this.value">
+            </div>
             
             <!-- Gravity Controls -->
             <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 4px; margin-top:10px; margin-bottom: 10px;">
@@ -230,19 +247,12 @@
                     <input type="range" id="i-g-str" min="0" max="5.0" step="0.1" value="0.0">
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                    <div>
-                        <div class="label-row" style="justify-content:center; font-size:9px">DIR X</div>
-                        <input type="range" id="i-g-x" min="-1" max="1" step="0.1" value="0">
-                    </div>
-                    <div>
-                        <div class="label-row" style="justify-content:center; font-size:9px">DIR Y</div>
-                        <input type="range" id="i-g-y" min="-1" max="1" step="0.1" value="-1">
-                    </div>
-                    <div>
-                        <div class="label-row" style="justify-content:center; font-size:9px">DIR Z</div>
-                        <input type="range" id="i-g-z" min="-1" max="1" step="0.1" value="0">
-                    </div>
+                <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; margin-top: 5px;">
+                    <input type="checkbox" id="c-gravity" checked onchange="toggleGravityGizmo()" style="accent-color: var(--primary);">
+                    <label for="c-gravity" style="color: var(--text-muted); cursor: pointer;">SHOW DIRECTION</label>
+                </div>
+                <div style="font-size: 9px; color: #666; margin-top: 6px; font-style: italic;">
+                    Click the Yellow Arrow in scene to rotate gravity vector.
                 </div>
             </div>
 
@@ -325,6 +335,7 @@ const state = {
 let scene, camera, renderer, composer, controls, transformControls;
 let bloomPass;
 let flowSystem = null;
+let gravityGizmo = null;
 
 // --- NOISE ---
 class SimplexNoise {
@@ -391,7 +402,28 @@ function init() {
     gridHelper.position.y = -6;
     scene.add(gridHelper);
 
-    ['i-noise','i-points','i-targets','i-bundle','i-speed','i-g-str'].forEach(id => {
+    // --- GRAVITY GIZMO SETUP ---
+    gravityGizmo = new THREE.Group();
+    gravityGizmo.position.set(8, 5, 0);
+    
+    const gizmoMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, depthTest: false, transparent: true, opacity: 0.9 });
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 8), gizmoMat);
+    shaft.position.y = -1;
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 16), gizmoMat);
+    head.position.y = -2.25;
+    head.rotation.x = Math.PI; // Point down
+    
+    gravityGizmo.add(shaft);
+    gravityGizmo.add(head);
+    
+    // Invisible click target
+    const hitMesh = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
+    hitMesh.position.y = -1;
+    gravityGizmo.add(hitMesh);
+    
+    scene.add(gravityGizmo);
+
+    ['i-noise','i-points','i-targets','i-bundle','i-speed','i-bloom','i-g-str'].forEach(id => {
         const el = document.getElementById(id), val = document.getElementById(id.replace('i-','v-'));
         if(el && val) el.oninput = () => val.innerText = el.value;
     });
@@ -406,15 +438,30 @@ function init() {
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         ray.setFromCamera(mouse, camera);
         
+        // Check Inlets
         const inletMeshes = state.inlets.map(i => i.mesh);
-        const hits = ray.intersectObjects(inletMeshes, true);
+        let hits = ray.intersectObjects(inletMeshes, true);
         
         if (hits.length > 0) {
             let target = hits[0].object;
             while(target && !inletMeshes.includes(target)) target = target.parent;
-            if(target && target.visible) selectInlet(state.inlets.find(i => i.mesh === target));
-        } else if (transformControls.object && !ray.intersectObject(transformControls.children[0], true).length) {
-            selectInlet(null);
+            if(target && target.visible) {
+                selectInlet(state.inlets.find(i => i.mesh === target));
+                return;
+            }
+        } 
+        
+        // Check Gravity Gizmo
+        if (document.getElementById('c-gravity').checked) {
+            hits = ray.intersectObject(gravityGizmo, true);
+            if (hits.length > 0) {
+                selectGravityGizmo();
+                return;
+            }
+        }
+
+        if (transformControls.object && !ray.intersectObject(transformControls.children[0], true).length) {
+            selectInlet(null); // Deselect
         }
     });
 
@@ -459,6 +506,14 @@ window.toggleBloom = () => {
     if(bloomPass) bloomPass.enabled = document.getElementById('c-bloom').checked;
 };
 
+window.updateBloom = () => {
+    if(bloomPass) {
+        const val = parseFloat(document.getElementById('i-bloom').value);
+        document.getElementById('v-bloom').innerText = val;
+        bloomPass.strength = val;
+    }
+};
+
 window.updateColorMap = () => {
     const sel = document.getElementById('s-colormap');
     state.currentColorMap = sel.value;
@@ -468,8 +523,24 @@ window.updateColorMap = () => {
 window.toggleInlets = () => {
     const visible = document.getElementById('c-inlets').checked;
     state.inlets.forEach(inlet => inlet.mesh.visible = visible);
-    if (!visible) transformControls.detach();
+    if (!visible && transformControls.object && state.inlets.some(i => i.mesh === transformControls.object)) {
+        transformControls.detach();
+    }
 };
+
+window.toggleGravityGizmo = () => {
+    const visible = document.getElementById('c-gravity').checked;
+    if(gravityGizmo) gravityGizmo.visible = visible;
+    if(!visible && transformControls.object === gravityGizmo) transformControls.detach();
+};
+
+window.toggleOrgan = () => { if(state.organMesh) state.organMesh.visible = document.getElementById('c-organ').checked; }
+
+function selectGravityGizmo() {
+    transformControls.attach(gravityGizmo);
+    transformControls.setMode('rotate');
+    renderInletList(); // To clear inlet highlights
+}
 
 function refreshColors() {
     if(!state.linesMesh || state.segments.length === 0) return;
@@ -523,12 +594,16 @@ class FlowParticleSystem {
         if (!visible || !state.segments.length) return;
 
         const globalSpeedMult = parseFloat(document.getElementById('i-speed').value);
+        const profileExponent = parseFloat(document.getElementById('i-profile').value);
         const count = Math.min(state.segments.length, this.maxParticles);
         const p0 = new THREE.Vector3(); const p1 = new THREE.Vector3(); const pos = new THREE.Vector3();
         
         for (let i = 0; i < count; i++) {
             const seg = state.segments[i];
-            const velocity = Math.pow(seg.r, 1.5) * 5.0; 
+            
+            // VELOCITY PHYSICS: controlled by profileExponent
+            const velocity = Math.pow(seg.r, profileExponent) * 5.0; 
+            
             const dt = (velocity / (seg.len + 0.0001)) * globalSpeedMult;
             
             this.progress[i] = (this.progress[i] + dt) % 1.0;
@@ -600,7 +675,10 @@ window.addInlet = () => {
 
 function selectInlet(inlet) { 
     if (!inlet) { transformControls.detach(); } 
-    else { transformControls.attach(inlet.mesh); }
+    else { 
+        transformControls.attach(inlet.mesh); 
+        transformControls.setMode('translate');
+    }
     renderInletList();
 }
 
@@ -750,17 +828,20 @@ window.handleFileUpload = (event) => {
 };
 
 function setupVolume(geo) {
+    // Reset Data State
     state.segments = [];
     state.leaves.clear();
     state.maxFlow = 1;
     if(flowSystem) flowSystem.reset();
 
+    // Reset Meshes
     if(state.organMesh) { scene.remove(state.organMesh); state.organMesh.geometry.dispose(); }
     if(state.linesMesh) { scene.remove(state.linesMesh); state.linesMesh.geometry.dispose(); }
     if(state.pointsMesh) { scene.remove(state.pointsMesh); state.pointsMesh.geometry.dispose(); }
     
     const wireMat = new THREE.MeshBasicMaterial({color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.05 });
     state.organMesh = new THREE.Mesh(geo, wireMat);
+    state.organMesh.visible = document.getElementById('c-organ') ? document.getElementById('c-organ').checked : true;
     scene.add(state.organMesh);
 
     const box = geo.boundingBox, size = new THREE.Vector3(); box.getSize(size);
@@ -814,6 +895,7 @@ function setupVolume(geo) {
 }
 
 window.togglePoints = () => { if(state.pointsMesh) state.pointsMesh.visible = document.getElementById('c-pts').checked; }
+window.toggleOrgan = () => { if(state.organMesh) state.organMesh.visible = document.getElementById('c-organ').checked; }
 
 async function growVessels() {
     controls.autoRotate = false; transformControls.detach();
@@ -830,16 +912,12 @@ async function growVessels() {
     }
     posAttr.needsUpdate = true;
 
-    // Get gravity params
+    // Get gravity params from gizmo if enabled
     const gStrength = parseFloat(document.getElementById('i-g-str').value);
-    const gX = parseFloat(document.getElementById('i-g-x').value);
-    const gY = parseFloat(document.getElementById('i-g-y').value);
-    const gZ = parseFloat(document.getElementById('i-g-z').value);
-    // Normalize gravity vector
-    const gLen = Math.sqrt(gX*gX + gY*gY + gZ*gZ) || 1;
-    const nGX = gX / gLen;
-    const nGY = gY / gLen;
-    const nGZ = gZ / gLen;
+    // Gravity vector is Arrow Direction (which defaults to 0,-1,0).
+    // Apply Gizmo rotation to 0,-1,0
+    const gVector = new THREE.Vector3(0, -1, 0);
+    if(gravityGizmo) gVector.applyQuaternion(gravityGizmo.quaternion).normalize();
 
     const sourceMap = state.inlets.map(inlet => {
         let minDist = Infinity, nearestIdx = 0;
@@ -890,7 +968,7 @@ async function growVessels() {
                     const dy = targetNode.y - n.y;
                     const dz = targetNode.z - n.z;
                     // Dot product of edge direction and gravity vector
-                    const dot = (dx*nGX + dy*nGY + dz*nGZ) / edge.dist;
+                    const dot = (dx*gVector.x + dy*gVector.y + dz*gVector.z) / edge.dist;
                     
                     // Logic: If moving in direction of gravity (dot > 0), low cost.
                     // If moving against gravity (dot < 0), high cost.
