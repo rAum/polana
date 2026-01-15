@@ -23,8 +23,8 @@
             margin: 0;
             overflow: hidden;
             background-color: var(--bg-dark);
-            /* Improved Gradient Background */
-            background: radial-gradient(circle at 50% 50%, #1a2634 0%, #080a10 60%, #000000 100%);
+            /* Improved Gradient Background - Deeper and smoother */
+            background: radial-gradient(circle at center, #1c2e3f 0%, #0f161d 45%, #000000 100%);
             font-family: 'Rajdhani', sans-serif;
             color: var(--text-main);
             user-select: none;
@@ -47,7 +47,7 @@
             pointer-events: none;
             display: grid;
             grid-template-rows: 60px 1fr 40px;
-            grid-template-columns: 340px 1fr;
+            grid-template-columns: 360px 1fr;
             grid-template-areas: 
                 "header header"
                 "sidebar viewport"
@@ -94,13 +94,51 @@
             font-size: 14px; color: var(--primary); letter-spacing: 2px;
             text-transform: uppercase; margin-bottom: 15px;
             display: flex; align-items: center; gap: 10px;
+            cursor: pointer; /* For collapsible sections */
         }
         .panel-header::after { content: ''; height: 1px; flex-grow: 1; background: linear-gradient(90deg, var(--primary) 0%, transparent 100%); opacity: 0.5; }
 
+        /* Documentation Panel */
+        #doc-content {
+            font-size: 11px; line-height: 1.5; color: var(--text-muted);
+            background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.05);
+            display: none;
+        }
+        #doc-content.open { display: block; }
+        #doc-content strong { color: var(--text-main); }
+
         /* --- CONTROLS --- */
         .control-group { margin-bottom: 15px; }
-        .label-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+        .label-row { 
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 5px; font-size: 12px; font-weight: 600; color: var(--text-muted); 
+            position: relative;
+        }
         .value-display { font-family: 'JetBrains Mono', monospace; color: var(--primary); }
+
+        /* Tooltips */
+        .help-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: rgba(255,255,255,0.1); color: var(--text-muted);
+            font-size: 9px; cursor: help; margin-left: 6px;
+            transition: 0.2s;
+        }
+        .help-icon:hover { background: var(--primary); color: #000; }
+        
+        .tooltip {
+            position: absolute; bottom: 100%; left: 0; width: 100%;
+            background: #0f161d; border: 1px solid var(--primary);
+            color: #e0f0ff; padding: 8px; border-radius: 4px;
+            font-size: 10px; line-height: 1.4; font-weight: normal;
+            z-index: 100; pointer-events: none;
+            opacity: 0; visibility: hidden; transform: translateY(5px);
+            transition: all 0.2s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+        }
+        .help-icon:hover + .tooltip, .label-row:hover .tooltip {
+            opacity: 1; visibility: visible; transform: translateY(0);
+        }
 
         /* Custom Range Slider */
         input[type=range] {
@@ -208,17 +246,46 @@
             </svg>
             VASCULAR PERFUSION ENGINE
         </div>
-        <div class="status-badge" id="system-status">SYSTEM READY</div>
+        <div class="status-badge" id="system-status">Visualization</div>
     </header>
 
     <div id="sidebar">
+        <!-- Section 0: Info -->
+        <div class="panel-section">
+            <div class="panel-header" onclick="document.getElementById('doc-content').classList.toggle('open')">00 // SYSTEM ARCHITECTURE <span style="font-size:10px; opacity:0.5; margin-left:auto">▼</span></div>
+            <div id="doc-content">
+                <strong>Simplex Noise Volume:</strong> Generates organic, non-uniform tissue shapes by perturbing a sphere mesh.<br><br>
+                <strong>Constructive Optimization:</strong> Uses Dijkstra's algorithm to find optimal paths from inlets to target tissues. Repeated flow reinforces paths, turning them into arteries (Adaptive Conductivity).<br><br>
+                <strong>Murray's Law:</strong> Vessel radii are scaled ($r^3 = \sum r_{child}^3$) to mimic biological energy conservation.<br><br>
+                <strong>CFD Particle Flow:</strong> Visualizes hemodynamics. Speed is proportional to $Radius^{1.5} / Length$, simulating fluid momentum.
+            </div>
+        </div>
+
         <!-- Section 1: Mesh -->
         <div class="panel-section">
             <div class="panel-header">01 // VOLUME SYNTHESIS</div>
+            
             <div class="control-group">
-                <div class="label-row"><span>IRREGULARITY NOISE</span><span id="v-noise" class="value-display">0.7</span></div>
+                <div class="label-row">
+                    <span>IRREGULARITY NOISE</span>
+                    <div class="help-icon">?</div>
+                    <div class="tooltip">Amplitude of the simplex noise used to deform the organ mesh. Higher values create weirder, more organic shapes.</div>
+                    <span id="v-noise" class="value-display">0.7</span>
+                </div>
                 <input type="range" id="i-noise" min="0" max="1.5" step="0.1" value="0.7">
             </div>
+
+            <!-- New Point Count Setting -->
+            <div class="control-group">
+                <div class="label-row">
+                    <span>TISSUE RESOLUTION</span>
+                    <div class="help-icon">?</div>
+                    <div class="tooltip">Total number of tissue nodes (voxels) generated inside the mesh. Higher count = more dense and detailed vascular tree (Heavier on CPU).</div>
+                    <span id="v-points" class="value-display">3000</span>
+                </div>
+                <input type="range" id="i-points" min="1000" max="10000" step="500" value="3000">
+            </div>
+
             <div class="btn-group">
                 <button class="btn-tech" onclick="run(genVolume)">GENERATE VOLUME</button>
                 <button class="btn-tech" onclick="document.getElementById('file-input').click()">UPLOAD STL</button>
@@ -245,16 +312,31 @@
         <div class="panel-section">
             <div class="panel-header">03 // GROWTH ALGORITHM</div>
             <div class="control-group">
-                <div class="label-row"><span>TARGET DENSITY</span><span id="v-targets" class="value-display">400</span></div>
+                <div class="label-row">
+                    <span>TARGET DENSITY</span>
+                    <div class="help-icon">?</div>
+                    <div class="tooltip">Number of perfusion targets (capillary beds) the network attempts to reach. Higher = more fine branching.</div>
+                    <span id="v-targets" class="value-display">400</span>
+                </div>
                 <input type="range" id="i-targets" min="100" max="1000" step="50" value="400">
             </div>
             <div class="control-group">
-                <div class="label-row"><span>ARTERIAL BUNDLING</span><span id="v-bundle" class="value-display">3.0</span></div>
+                <div class="label-row">
+                    <span>ARTERIAL BUNDLING</span>
+                    <div class="help-icon">?</div>
+                    <div class="tooltip">Controls how strongly vessels prefer to merge. High values create thick main trunks; low values create a web-like diffuse network.</div>
+                    <span id="v-bundle" class="value-display">3.0</span>
+                </div>
                 <input type="range" id="i-bundle" min="0" max="10.0" step="0.5" value="3.0">
             </div>
             
             <div class="control-group">
-                <div class="label-row"><span>FLOW VELOCITY</span><span id="v-speed" class="value-display">0.02</span></div>
+                <div class="label-row">
+                    <span>FLOW VELOCITY</span>
+                    <div class="help-icon">?</div>
+                    <div class="tooltip">Global speed multiplier for the particle animation. Physics is based on vessel diameter.</div>
+                    <span id="v-speed" class="value-display">0.02</span>
+                </div>
                 <input type="range" id="i-speed" min="0.001" max="0.1" step="0.001" value="0.02">
             </div>
             
@@ -336,8 +418,6 @@ let flowSystem = null;
 function init() {
     // Scene Setup
     scene = new THREE.Scene();
-    // Background handled by CSS, scene background null to be transparent? 
-    // No, we need bloom. So background must be dark color.
     scene.background = new THREE.Color(0x05070a); 
     
     camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -380,8 +460,8 @@ function init() {
     gridHelper.position.y = -6;
     scene.add(gridHelper);
 
-    // Bind UI (Removed 'i-repel')
-    ['i-noise','i-targets','i-bundle','i-speed'].forEach(id => {
+    // Bind UI (Added 'i-points')
+    ['i-noise','i-points','i-targets','i-bundle','i-speed'].forEach(id => {
         const el = document.getElementById(id), val = document.getElementById(id.replace('i-','v-'));
         if(el && val) el.oninput = () => val.innerText = el.value;
     });
@@ -442,13 +522,14 @@ function animate() {
 // --- PARTICLE SYSTEM CLASS ---
 class FlowParticleSystem {
     constructor() {
-        this.maxParticles = 12000; 
+        this.maxParticles = 20000; // Increased buffer for denser tissue
         this.dummy = new THREE.Object3D();
         const geo = new THREE.SphereGeometry(1, 8, 8); 
         const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         this.mesh = new THREE.InstancedMesh(geo, mat, this.maxParticles);
         this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(this.maxParticles * 3), 3);
+        this.mesh.frustumCulled = false;
         
         this.progress = new Float32Array(this.maxParticles).map(() => Math.random());
         
@@ -488,14 +569,10 @@ class FlowParticleSystem {
         for (let i = 0; i < count; i++) {
             const seg = state.segments[i];
             
-            // CFD Velocity approximation: v proportional to r^1.5 (or r^2 for more contrast)
-            // seg.r ranges roughly 0.05 - 1.5
-            // Use r^1.5 for visible difference but not frozen capillaries
-            // Base speed factor * radius factor
+            // CFD Velocity approximation: v proportional to r^1.5
             const velocity = Math.pow(seg.r, 1.5) * 5.0; 
             
             // dt = velocity / length * multiplier
-            // Add tiny epsilon to length to avoid div/0
             const dt = (velocity / (seg.len + 0.0001)) * globalSpeedMult;
             
             // Update progress
@@ -508,10 +585,10 @@ class FlowParticleSystem {
             
             this.dummy.position.copy(pos);
             
-            // --- UPDATED LOGARITHMIC SCALE LOGIC ---
+            // --- LOGARITHMIC SCALE LOGIC ---
             let scale = 0.025 * (1 + Math.log(1 + seg.r * 5)); 
             
-            // "Die" at terminal end: Fade out size if segment is terminal
+            // "Die" at terminal end
             if (seg.isTerminal) {
                 scale *= (1.0 - Math.pow(t, 2)); 
             }
@@ -522,9 +599,8 @@ class FlowParticleSystem {
             // --- HEATMAP COLOR LOGIC ---
             const flowRatio = Math.min(1.0, seg.flow / (state.maxFlow || 1));
             
-            // Lerp Color: Red (Low) -> Orange (Med) -> White (High)
             if (flowRatio < 0.2) {
-                this.tempCol.copy(this.cLow); // Capillaries
+                this.tempCol.copy(this.cLow); 
             } else if (flowRatio < 0.6) {
                 this.tempCol.lerpColors(this.cLow, this.cMed, (flowRatio - 0.2) * 2.5);
             } else {
@@ -661,9 +737,15 @@ function setupVolume(geo) {
     const ray = new THREE.Raycaster(), rayDir = new THREE.Vector3(1,0,0), meshD = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
     meshD.updateMatrixWorld();
     
+    // Use user-defined point count
+    const targetPoints = parseInt(document.getElementById('i-points').value) || 3000;
+    
     const pts = [];
     let attempts = 0;
-    while(pts.length < 3000 && attempts < 20000) {
+    // Safety break loop
+    const maxAttempts = targetPoints * 10; 
+    
+    while(pts.length < targetPoints && attempts < maxAttempts) {
         attempts++;
         const p = new THREE.Vector3(
             box.min.x + Math.random()*size.x, 
@@ -682,9 +764,21 @@ function setupVolume(geo) {
     pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
     state.pointsMesh = new THREE.Points(pGeo, new THREE.PointsMaterial({color: 0x445566, size: 0.05, transparent: true, opacity: 0.6}));
     state.pointsMesh.visible = document.getElementById('c-pts').checked;
+    
+    // Prevent points from disappearing on zoom/pan
+    state.pointsMesh.frustumCulled = false;
+    
     scene.add(state.pointsMesh);
 
-    const connDist = 1.25, connDistSq = connDist**2;
+    // Calculate connection distance based on density approx
+    // V ~ L^3, N points -> dist ~ L / N^(1/3)
+    // Roughly if 3000 -> 1.25. If 6000 -> smaller.
+    // Let's adapt connDist slightly based on points count to ensure connectivity
+    // 3000 -> 1.25. 1000 -> 1.8. 
+    const densityFactor = Math.pow(3000 / targetPoints, 0.33); 
+    const connDist = 1.25 * densityFactor;
+    const connDistSq = connDist**2;
+    
     for(let i=0; i<pts.length; i++) {
         for(let j=i+1; j<pts.length; j++) {
             const d2 = (pts[i].x-pts[j].x)**2 + (pts[i].y-pts[j].y)**2 + (pts[i].z-pts[j].z)**2;
@@ -743,6 +837,10 @@ async function growVessels() {
 
     // Setup Geometry
     state.linesMesh = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2, transparent: true, blending: THREE.AdditiveBlending }));
+    
+    // Prevent frustum culling to fix disappearing lines
+    state.linesMesh.frustumCulled = false;
+    
     scene.add(state.linesMesh);
     
     // ITERATIVE GROWTH (The "Simulator")
@@ -886,6 +984,9 @@ function updateVisualization(sourceMap, dists) {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
     geo.setDrawRange(0, pos.length/3);
+    
+    // Explicitly update bounds to be sure (though frustumCulled=false makes it redundant, it's good practice for raycasting if added later)
+    geo.computeBoundingSphere();
     
     document.getElementById('s-segs').innerText = state.segments.length;
 }
