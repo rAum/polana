@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bio-Digital Vascular Engine // V5.9</title>
+    <title>Bio-Digital Vascular Engine // V6.0</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -155,7 +155,7 @@
             <div id="doc-content">
                 <strong>Algorithm:</strong> CCO with Adaptive Conductivity.<br>
                 <strong>Flow Dynamics:</strong> $v \propto r^{1.5}$.<br>
-                <strong>Color:</strong> Normalized flow velocity heatmap.
+                <strong>Gravity:</strong> Paths optimized vs Directional Vector.
             </div>
         </div>
 
@@ -220,6 +220,32 @@
                 <div class="label-row"><span>FLOW VELOCITY</span><span id="v-speed" class="value-display">0.02</span></div>
                 <input type="range" id="i-speed" min="0.001" max="0.1" step="0.001" value="0.02">
             </div>
+            
+            <!-- Gravity Controls -->
+            <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 4px; margin-top:10px; margin-bottom: 10px;">
+                <div style="font-size: 10px; color: var(--primary); font-weight: bold; margin-bottom: 8px;">GRAVITY PHYSICS</div>
+                
+                <div class="control-group" style="margin-bottom:8px">
+                    <div class="label-row"><span>INFLUENCE</span><span id="v-g-str" class="value-display">0.0</span></div>
+                    <input type="range" id="i-g-str" min="0" max="5.0" step="0.1" value="0.0">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                    <div>
+                        <div class="label-row" style="justify-content:center; font-size:9px">DIR X</div>
+                        <input type="range" id="i-g-x" min="-1" max="1" step="0.1" value="0">
+                    </div>
+                    <div>
+                        <div class="label-row" style="justify-content:center; font-size:9px">DIR Y</div>
+                        <input type="range" id="i-g-y" min="-1" max="1" step="0.1" value="-1">
+                    </div>
+                    <div>
+                        <div class="label-row" style="justify-content:center; font-size:9px">DIR Z</div>
+                        <input type="range" id="i-g-z" min="-1" max="1" step="0.1" value="0">
+                    </div>
+                </div>
+            </div>
+
             <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px; font-size: 12px;">
                 <input type="checkbox" id="c-flow" onchange="toggleFlow()" style="accent-color: var(--primary);">
                 <label for="c-flow" style="color: var(--text-muted); cursor: pointer;">SHOW PARTICLES</label>
@@ -365,7 +391,7 @@ function init() {
     gridHelper.position.y = -6;
     scene.add(gridHelper);
 
-    ['i-noise','i-points','i-targets','i-bundle','i-speed'].forEach(id => {
+    ['i-noise','i-points','i-targets','i-bundle','i-speed','i-g-str'].forEach(id => {
         const el = document.getElementById(id), val = document.getElementById(id.replace('i-','v-'));
         if(el && val) el.oninput = () => val.innerText = el.value;
     });
@@ -804,6 +830,17 @@ async function growVessels() {
     }
     posAttr.needsUpdate = true;
 
+    // Get gravity params
+    const gStrength = parseFloat(document.getElementById('i-g-str').value);
+    const gX = parseFloat(document.getElementById('i-g-x').value);
+    const gY = parseFloat(document.getElementById('i-g-y').value);
+    const gZ = parseFloat(document.getElementById('i-g-z').value);
+    // Normalize gravity vector
+    const gLen = Math.sqrt(gX*gX + gY*gY + gZ*gZ) || 1;
+    const nGX = gX / gLen;
+    const nGY = gY / gLen;
+    const nGZ = gZ / gLen;
+
     const sourceMap = state.inlets.map(inlet => {
         let minDist = Infinity, nearestIdx = 0;
         for(let i=0; i<state.nodes.length; i++){
@@ -844,7 +881,26 @@ async function growVessels() {
             const n = state.nodes[u];
             for(let edge of n.neighbors) {
                 if(visited[edge.to]) continue;
-                const cost = edge.dist / (1.0 + bundleFactor * edge.cond);
+                
+                // Gravity Penalty Calculation
+                let gravPenalty = 0;
+                if (gStrength > 0) {
+                    const targetNode = state.nodes[edge.to];
+                    const dx = targetNode.x - n.x;
+                    const dy = targetNode.y - n.y;
+                    const dz = targetNode.z - n.z;
+                    // Dot product of edge direction and gravity vector
+                    const dot = (dx*nGX + dy*nGY + dz*nGZ) / edge.dist;
+                    
+                    // Logic: If moving in direction of gravity (dot > 0), low cost.
+                    // If moving against gravity (dot < 0), high cost.
+                    // We want to PENALIZE moving AGAINST gravity.
+                    // Dot = 1 (Aligned with G) -> Penalty 0
+                    // Dot = -1 (Against G) -> Penalty 2 * Strength
+                    gravPenalty = gStrength * (1.0 - dot); 
+                }
+
+                const cost = (edge.dist * (1.0 + gravPenalty)) / (1.0 + bundleFactor * edge.cond);
                 const alt = dists[u] + cost;
                 if(alt < dists[edge.to]) {
                     dists[edge.to] = alt;
