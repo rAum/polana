@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bio-Digital Vascular Engine // V6.3</title>
+    <title>Bio-Digital Vascular Engine // V6.9</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -64,7 +64,6 @@
             grid-area: sidebar;
             background: var(--panel-bg);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             border-right: 1px solid var(--panel-border);
             padding: 20px;
             overflow-y: auto;
@@ -149,17 +148,13 @@
     </header>
 
     <div id="sidebar">
-        <!-- Section 0: Info -->
         <div class="panel-section">
             <div class="panel-header" onclick="document.getElementById('doc-content').classList.toggle('open')">00 // SYSTEM ARCHITECTURE <span style="font-size:10px; opacity:0.5; margin-left:auto">▼</span></div>
             <div id="doc-content">
-                <strong>Algorithm:</strong> CCO with Adaptive Conductivity.<br>
-                <strong>Flow Dynamics:</strong> $v \propto r^{1.5}$.<br>
-                <strong>Gravity:</strong> Optimized vs 3D Vector Gizmo.
+                <strong>Spline smoothing:</strong> Uses Catmull-Rom interpolation with junction-awareness to avoid gaps at bifurcations.
             </div>
         </div>
 
-        <!-- Section 1: Mesh -->
         <div class="panel-section">
             <div class="panel-header">01 // VOLUME SYNTHESIS</div>
             <div class="control-group">
@@ -182,38 +177,34 @@
                 <input type="range" id="i-points" min="1000" max="10000" step="500" value="3000">
             </div>
             <div class="btn-group">
-                <button class="btn-tech" onclick="run(genVolume)">GENERATE VOLUME</button>
+                <button class="btn-tech" onclick="window.run(genVolume)">GENERATE VOLUME</button>
                 <button class="btn-tech" onclick="document.getElementById('file-input').click()">UPLOAD STL</button>
             </div>
-            <input type="file" id="file-input" style="display:none" accept=".stl" onchange="handleFileUpload(event)">
-            
-            <!-- Visibility Toggles for Volume -->
+            <input type="file" id="file-input" style="display:none" accept=".stl" onchange="window.handleFileUpload(event)">
             <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
                 <div style="display: flex; align-items: center; gap: 10px; font-size: 12px;">
-                    <input type="checkbox" id="c-pts" checked onchange="togglePoints()" style="accent-color: var(--primary);">
+                    <input type="checkbox" id="c-pts" checked onchange="window.togglePoints()" style="accent-color: var(--primary);">
                     <label for="c-pts" style="color: var(--text-muted); cursor: pointer;">SHOW TISSUE GRID</label>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px; font-size: 12px;">
-                    <input type="checkbox" id="c-organ" checked onchange="toggleOrgan()" style="accent-color: var(--primary);">
+                    <input type="checkbox" id="c-organ" checked onchange="window.toggleOrgan()" style="accent-color: var(--primary);">
                     <label for="c-organ" style="color: var(--text-muted); cursor: pointer;">SHOW ORGAN SHELL</label>
                 </div>
             </div>
         </div>
 
-        <!-- Section 2: Inlets -->
         <div class="panel-section">
             <div class="panel-header">02 // PERFUSION SOURCES</div>
             <div id="inlets-list"></div>
             <div class="control-group">
-                <button class="btn-tech" id="btn-add-inlet" onclick="addInlet()">+ ADD INLET SOURCE</button>
+                <button class="btn-tech" id="btn-add-inlet" onclick="window.addInlet()">+ ADD INLET SOURCE</button>
                 <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; font-size: 12px;">
-                    <input type="checkbox" id="c-inlets" checked onchange="toggleInlets()" style="accent-color: var(--primary);">
+                    <input type="checkbox" id="c-inlets" checked onchange="window.toggleInlets()" style="accent-color: var(--primary);">
                     <label for="c-inlets" style="color: var(--text-muted); cursor: pointer;">SHOW SOURCES</label>
                 </div>
             </div>
         </div>
 
-        <!-- Section 3: Simulation -->
         <div class="panel-section">
             <div class="panel-header">03 // GROWTH ALGORITHM</div>
             <div class="control-group">
@@ -231,53 +222,51 @@
             <div class="control-group">
                 <div class="label-row">
                     <span>VELOCITY PROFILE</span>
-                    <div class="help-icon">?</div>
-                    <div class="tooltip">Physiological (Positive) vs Constriction (Negative) velocity scaling based on radius.</div>
-                    <span id="v-profile" class="value-display">1.5</span>
+                    <span id="v-profile" class="value-display">-1.0</span>
                 </div>
-                <input type="range" id="i-profile" min="-2.0" max="3.0" step="0.5" value="1.5" oninput="document.getElementById('v-profile').innerText = this.value">
+                <input type="range" id="i-profile" min="-2.0" max="3.0" step="0.5" value="-1.0" oninput="document.getElementById('v-profile').innerText = this.value">
             </div>
             
-            <!-- Gravity Controls -->
             <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 4px; margin-top:10px; margin-bottom: 10px;">
                 <div style="font-size: 10px; color: var(--primary); font-weight: bold; margin-bottom: 8px;">GRAVITY PHYSICS</div>
-                
                 <div class="control-group" style="margin-bottom:8px">
                     <div class="label-row"><span>INFLUENCE</span><span id="v-g-str" class="value-display">0.0</span></div>
                     <input type="range" id="i-g-str" min="0" max="5.0" step="0.1" value="0.0">
                 </div>
-                
                 <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; margin-top: 5px;">
-                    <input type="checkbox" id="c-gravity" checked onchange="toggleGravityGizmo()" style="accent-color: var(--primary);">
+                    <input type="checkbox" id="c-gravity" checked onchange="window.toggleGravityGizmo()" style="accent-color: var(--primary);">
                     <label for="c-gravity" style="color: var(--text-muted); cursor: pointer;">SHOW DIRECTION</label>
-                </div>
-                <div style="font-size: 9px; color: #666; margin-top: 6px; font-style: italic;">
-                    Click the Yellow Arrow in scene to rotate gravity vector.
                 </div>
             </div>
 
             <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px; font-size: 12px;">
-                <input type="checkbox" id="c-flow" onchange="toggleFlow()" style="accent-color: var(--primary);">
+                <input type="checkbox" id="c-flow" onchange="window.toggleFlow()" style="accent-color: var(--primary);">
                 <label for="c-flow" style="color: var(--text-muted); cursor: pointer;">SHOW PARTICLES</label>
             </div>
-            <button class="btn-tech" id="btn-grow" disabled onclick="run(growVessels)" style="margin-top: 15px; border-color: var(--primary); background: rgba(0,243,255,0.1);">INITIATE SIMULATION</button>
+            <button class="btn-tech" id="btn-grow" disabled onclick="window.run(window.growVessels)" style="margin-top: 15px; border-color: var(--primary); background: rgba(0,243,255,0.1);">INITIATE SIMULATION</button>
         </div>
 
-        <!-- Section 4: Export -->
         <div class="panel-section">
             <div class="panel-header">04 // DATA EXPORT</div>
             <div class="btn-group">
-                <button class="btn-tech" id="btn-exp-vessel" disabled onclick="exportData('vessels')">JSON GRAPH</button>
+                <button class="btn-tech" id="btn-exp-vessel" disabled onclick="window.exportData('vessels')">JSON GRAPH</button>
                 <button class="btn-tech" id="btn-exp-obj" disabled onclick="exportData('obj')">OBJ MESH</button>
             </div>
         </div>
 
-        <!-- Section 5: Rendering -->
         <div class="panel-section">
             <div class="panel-header">05 // RENDERING</div>
             <div class="control-group">
+                <div class="label-row">
+                    <span>BLOOM INTENSITY</span>
+                    <span id="v-bloom" class="value-display">0.80</span>
+                </div>
+                <!-- Reduced max value and high precision step for better control -->
+                <input type="range" id="i-bloom" min="0" max="2.0" step="0.01" value="0.80" oninput="window.updateBloom()">
+            </div>
+            <div class="control-group">
                 <div class="label-row"><span>COLORMAP</span></div>
-                <select id="s-colormap" onchange="updateColorMap()">
+                <select id="s-colormap" onchange="window.updateColorMap()">
                     <option value="INFERNO">INFERNO (Thermal)</option>
                     <option value="PLASMA">PLASMA (High Contrast)</option>
                     <option value="VIRIDIS">VIRIDIS (Scientific)</option>
@@ -285,8 +274,15 @@
                     <option value="BLOOD">BLOOD (Biological)</option>
                 </select>
             </div>
+            <div class="control-group">
+                <div class="label-row"><span>PATH STYLE</span></div>
+                <select id="s-pathstyle" onchange="window.updatePathStyle()">
+                    <option value="STRAIGHT">STRAIGHT (VOXEL)</option>
+                    <option value="SMOOTH">SMOOTH (SPLINE)</option>
+                </select>
+            </div>
             <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; font-size: 12px;">
-                <input type="checkbox" id="c-bloom" checked onchange="toggleBloom()" style="accent-color: var(--primary);">
+                <input type="checkbox" id="c-bloom" checked onchange="window.toggleBloom()" style="accent-color: var(--primary);">
                 <label for="c-bloom" style="color: var(--text-muted); cursor: pointer;">ENABLE BLOOM</label>
             </div>
         </div>
@@ -314,7 +310,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-// --- IMPROVED COLOR MAPS ---
+// --- CONSTANTS ---
 const COLOR_MAPS = {
     'INFERNO': [new THREE.Color(0x661100), new THREE.Color(0xff4400), new THREE.Color(0xffaa00), new THREE.Color(0xffff80), new THREE.Color(0xffffff)],
     'PLASMA':  [new THREE.Color(0x440055), new THREE.Color(0xaa2288), new THREE.Color(0xcc6644), new THREE.Color(0xfebc2b), new THREE.Color(0xf0f921)],
@@ -330,7 +326,11 @@ const state = {
     inletCounter: 0,
     maxFlow: 1,
     leaves: new Set(),
-    currentColorMap: 'INFERNO'
+    currentColorMap: 'INFERNO',
+    currentPathStyle: 'STRAIGHT',
+    lastParents: null,
+    lastDists: null,
+    lastSourceMap: null
 };
 let scene, camera, renderer, composer, controls, transformControls;
 let bloomPass;
@@ -361,6 +361,19 @@ class SimplexNoise {
 }
 const noise = new SimplexNoise();
 
+// --- EXPOSE run TO GLOBAL ---
+window.run = async (fn) => {
+    const l = document.getElementById('loading'); if(l) l.classList.add('active');
+    const statusBadge = document.getElementById('system-status');
+    if(statusBadge) { statusBadge.innerText = "PROCESSING"; statusBadge.style.color = "#ffaa00"; statusBadge.style.borderColor = "#ffaa00"; }
+    
+    await new Promise(r => setTimeout(r, 100));
+    try { await fn(); } catch(e) { console.error(e); }
+    
+    if(l) l.classList.remove('active');
+    if(statusBadge) { statusBadge.innerText = "SYSTEM READY"; statusBadge.style.color = "#00f3ff"; statusBadge.style.borderColor = "#00f3ff"; }
+};
+
 function init() {
     scene = new THREE.Scene();
     scene.background = null; 
@@ -379,7 +392,7 @@ function init() {
     const renderScene = new RenderPass(scene, camera);
     bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
     bloomPass.threshold = 0.05; 
-    bloomPass.strength = 1.5;   
+    bloomPass.strength = 0.8;   
     bloomPass.radius = 0.5;
 
     const outputPass = new OutputPass();
@@ -402,28 +415,20 @@ function init() {
     gridHelper.position.y = -6;
     scene.add(gridHelper);
 
-    // --- GRAVITY GIZMO SETUP ---
     gravityGizmo = new THREE.Group();
     gravityGizmo.position.set(8, 5, 0);
-    
     const gizmoMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, depthTest: false, transparent: true, opacity: 0.9 });
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 8), gizmoMat);
     shaft.position.y = -1;
     const head = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 16), gizmoMat);
-    head.position.y = -2.25;
-    head.rotation.x = Math.PI; // Point down
-    
-    gravityGizmo.add(shaft);
-    gravityGizmo.add(head);
-    
-    // Invisible click target
+    head.position.y = -2.25; head.rotation.x = Math.PI;
+    gravityGizmo.add(shaft, head);
     const hitMesh = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
     hitMesh.position.y = -1;
     gravityGizmo.add(hitMesh);
-    
     scene.add(gravityGizmo);
 
-    ['i-noise','i-points','i-targets','i-bundle','i-speed','i-bloom','i-g-str'].forEach(id => {
+    ['i-noise','i-points','i-targets','i-bundle','i-speed','i-g-str'].forEach(id => {
         const el = document.getElementById(id), val = document.getElementById(id.replace('i-','v-'));
         if(el && val) el.oninput = () => val.innerText = el.value;
     });
@@ -438,31 +443,18 @@ function init() {
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         ray.setFromCamera(mouse, camera);
         
-        // Check Inlets
         const inletMeshes = state.inlets.map(i => i.mesh);
         let hits = ray.intersectObjects(inletMeshes, true);
-        
         if (hits.length > 0) {
             let target = hits[0].object;
             while(target && !inletMeshes.includes(target)) target = target.parent;
-            if(target && target.visible) {
-                selectInlet(state.inlets.find(i => i.mesh === target));
-                return;
-            }
+            if(target && target.visible) { selectInlet(state.inlets.find(i => i.mesh === target)); return; }
         } 
-        
-        // Check Gravity Gizmo
         if (document.getElementById('c-gravity').checked) {
             hits = ray.intersectObject(gravityGizmo, true);
-            if (hits.length > 0) {
-                selectGravityGizmo();
-                return;
-            }
+            if (hits.length > 0) { selectGravityGizmo(); return; }
         }
-
-        if (transformControls.object && !ray.intersectObject(transformControls.children[0], true).length) {
-            selectInlet(null); // Deselect
-        }
+        if (transformControls.object && !ray.intersectObject(transformControls.children[0], true).length) selectInlet(null);
     });
 
     flowSystem = new FlowParticleSystem();
@@ -470,208 +462,25 @@ function init() {
     scene.add(flowSystem.mesh);
 
     animate();
-    run(genVolume).then(() => addInlet());
+    window.run(genVolume).then(() => window.addInlet());
 }
 
 function onResize() { 
-    camera.aspect = window.innerWidth / window.innerHeight; 
-    camera.updateProjectionMatrix(); 
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    composer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); 
+    renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function animate() { 
-    requestAnimationFrame(animate); 
-    controls.update(); 
-    if(flowSystem) flowSystem.update();
-    composer.render(); 
-}
+function animate() { requestAnimationFrame(animate); controls.update(); if(flowSystem) flowSystem.update(); composer.render(); }
 
-// --- COLOR UTILS ---
+// --- COLOR & UI ---
 function getGradientColor(t, targetColor) {
     const palette = COLOR_MAPS[state.currentColorMap];
     if (t <= 0) return targetColor.copy(palette[0]);
     if (t >= 1) return targetColor.copy(palette[palette.length - 1]);
-
     const scaled = t * (palette.length - 1);
     const i = Math.floor(scaled);
-    const alpha = scaled - i;
-    
-    targetColor.copy(palette[i]).lerp(palette[i+1], alpha);
-    return targetColor;
+    return targetColor.copy(palette[i]).lerp(palette[i+1], scaled - i);
 }
-
-// --- UI HANDLERS ---
-window.toggleBloom = () => {
-    if(bloomPass) bloomPass.enabled = document.getElementById('c-bloom').checked;
-};
-
-window.updateBloom = () => {
-    if(bloomPass) {
-        const val = parseFloat(document.getElementById('i-bloom').value);
-        document.getElementById('v-bloom').innerText = val;
-        bloomPass.strength = val;
-    }
-};
-
-window.updateColorMap = () => {
-    const sel = document.getElementById('s-colormap');
-    state.currentColorMap = sel.value;
-    refreshColors(); 
-};
-
-window.toggleInlets = () => {
-    const visible = document.getElementById('c-inlets').checked;
-    state.inlets.forEach(inlet => inlet.mesh.visible = visible);
-    if (!visible && transformControls.object && state.inlets.some(i => i.mesh === transformControls.object)) {
-        transformControls.detach();
-    }
-};
-
-window.toggleGravityGizmo = () => {
-    const visible = document.getElementById('c-gravity').checked;
-    if(gravityGizmo) gravityGizmo.visible = visible;
-    if(!visible && transformControls.object === gravityGizmo) transformControls.detach();
-};
-
-window.toggleOrgan = () => { if(state.organMesh) state.organMesh.visible = document.getElementById('c-organ').checked; }
-
-function selectGravityGizmo() {
-    transformControls.attach(gravityGizmo);
-    transformControls.setMode('rotate');
-    renderInletList(); // To clear inlet highlights
-}
-
-function refreshColors() {
-    if(!state.linesMesh || state.segments.length === 0) return;
-    const colors = [];
-    const tempCol = new THREE.Color();
-    
-    for(let s of state.segments) {
-        const flowRatio = Math.min(1.0, s.flow / (state.maxFlow || 1));
-        const t = Math.pow(flowRatio, 0.4); 
-        getGradientColor(t, tempCol);
-        colors.push(tempCol.r, tempCol.g, tempCol.b);
-        colors.push(tempCol.r, tempCol.g, tempCol.b);
-    }
-    
-    const geo = state.linesMesh.geometry;
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geo.attributes.color.needsUpdate = true;
-}
-
-// --- PARTICLE SYSTEM ---
-class FlowParticleSystem {
-    constructor() {
-        this.maxParticles = 20000;
-        this.dummy = new THREE.Object3D();
-        const geo = new THREE.SphereGeometry(1, 8, 8); 
-        const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        this.mesh = new THREE.InstancedMesh(geo, mat, this.maxParticles);
-        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(this.maxParticles * 3), 3);
-        this.mesh.frustumCulled = false;
-        
-        this.progress = new Float32Array(this.maxParticles).map(() => Math.random());
-        this.tempCol = new THREE.Color();
-    }
-
-    reset() {
-        this.mesh.count = 0;
-        this.mesh.visible = false;
-        for(let i=0; i<this.maxParticles; i++) this.progress[i] = Math.random();
-        const flowCheck = document.getElementById('c-flow');
-        if(flowCheck) flowCheck.checked = false;
-    }
-
-    show() {
-        this.mesh.visible = true;
-    }
-
-    update() {
-        const visible = document.getElementById('c-flow').checked;
-        this.mesh.visible = visible;
-        if (!visible || !state.segments.length) return;
-
-        const globalSpeedMult = parseFloat(document.getElementById('i-speed').value);
-        const profileExponent = parseFloat(document.getElementById('i-profile').value);
-        const count = Math.min(state.segments.length, this.maxParticles);
-        const p0 = new THREE.Vector3(); const p1 = new THREE.Vector3(); const pos = new THREE.Vector3();
-        
-        for (let i = 0; i < count; i++) {
-            const seg = state.segments[i];
-            
-            // VELOCITY PHYSICS: controlled by profileExponent
-            const velocity = Math.pow(seg.r, profileExponent) * 5.0; 
-            
-            const dt = (velocity / (seg.len + 0.0001)) * globalSpeedMult;
-            
-            this.progress[i] = (this.progress[i] + dt) % 1.0;
-            const t = this.progress[i];
-
-            p0.copy(seg.p0); p1.copy(seg.p1);
-            pos.lerpVectors(p0, p1, t);
-            
-            this.dummy.position.copy(pos);
-            
-            let scale = 0.025 * (1 + Math.log(1 + seg.r * 5)); 
-            if (seg.isTerminal) scale *= (1.0 - Math.pow(t, 2)); 
-            
-            this.dummy.scale.setScalar(scale);
-            this.dummy.updateMatrix();
-            this.mesh.setMatrixAt(i, this.dummy.matrix);
-
-            // Dynamic Color Map
-            const flowRatio = Math.min(1.0, seg.flow / (state.maxFlow || 1));
-            getGradientColor(Math.pow(flowRatio, 0.4), this.tempCol);
-            
-            // Multiply scalar for emission/bloom intensity
-            this.tempCol.multiplyScalar(3.0); 
-            
-            this.mesh.setColorAt(i, this.tempCol);
-        }
-
-        this.mesh.count = count;
-        this.mesh.instanceMatrix.needsUpdate = true;
-        this.mesh.instanceColor.needsUpdate = true;
-        const el = document.getElementById('s-parts');
-        if(el && Math.random()>0.9) el.innerText = count;
-    }
-}
-
-window.toggleFlow = () => { if(flowSystem) flowSystem.update(); };
-
-// --- ASYNC RUNNER ---
-window.run = async (fn) => {
-    const loader = document.getElementById('loading');
-    const status = document.getElementById('system-status');
-    if(loader) loader.classList.add('active');
-    if(status) { status.innerText = "PROCESSING"; status.style.color = "#ffaa00"; status.style.borderColor = "#ffaa00"; }
-    
-    await new Promise(r => setTimeout(r, 100));
-    try { await fn(); } catch(e) { console.error(e); alert("Operation failed: " + e.message); }
-    
-    if(loader) loader.classList.remove('active');
-    if(status) { status.innerText = "SYSTEM READY"; status.style.color = "#00f3ff"; status.style.borderColor = "#00f3ff"; }
-};
-
-// --- INLET SYSTEM ---
-window.addInlet = () => {
-    if (state.inlets.length >= 4) return;
-    const id = ++state.inletCounter;
-    // Reduced size per user request
-    const geo = new THREE.SphereGeometry(0.15, 32, 32); 
-    const mat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
-    const mesh = new THREE.Mesh(geo, mat);
-    const shell = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.2, wireframe: true }));
-    mesh.add(shell);
-    mesh.position.set(-6, (state.inlets.length * 2) - 2, 0); // Tighter stacking
-    scene.add(mesh);
-    const inlet = { mesh, id }; 
-    state.inlets.push(inlet);
-    renderInletList(); 
-    selectInlet(inlet);
-};
 
 function selectInlet(inlet) { 
     if (!inlet) { transformControls.detach(); } 
@@ -681,16 +490,6 @@ function selectInlet(inlet) {
     }
     renderInletList();
 }
-
-window.removeInlet = (id) => {
-    const idx = state.inlets.findIndex(i => i.id === id);
-    if (idx !== -1) {
-        if (transformControls.object === state.inlets[idx].mesh) transformControls.detach();
-        scene.remove(state.inlets[idx].mesh); 
-        state.inlets.splice(idx, 1);
-        renderInletList();
-    }
-};
 
 function renderInletList() {
     const list = document.getElementById('inlets-list'); if(!list) return; list.innerHTML = '';
@@ -703,401 +502,324 @@ function renderInletList() {
         list.appendChild(item);
     });
 }
+
+// Fixed Scoping for InnerHTML handlers
 window.selectInletById = (id) => selectInlet(state.inlets.find(i => i.id === id));
 
-// --- MESH GENERATION ---
-async function genVolume() {
-    const nScale = parseFloat(document.getElementById('i-noise').value);
-    const type = document.getElementById('s-organ').value;
-    
-    // PROCEDURAL GEOMETRY GENERATION
-    let geo;
-    
-    switch(type) {
-        case 'HEART':
-            // U-Shaped Volumetric Geometry using Icosahedron deformation
-            // Strategy: Stretch X, then bend Y up relative to X^2
-            geo = new THREE.IcosahedronGeometry(5, 5);
-            {
-                const pos = geo.attributes.position;
-                const v = new THREE.Vector3();
-                for(let i=0; i<pos.count; i++){
-                    v.fromBufferAttribute(pos, i);
-                    // 1. Flatten slightly in Z to make it less spherical
-                    v.z *= 0.8;
-                    // 2. Widen X
-                    v.x *= 1.5;
-                    // 3. Parabolic Bend in Y: y' = y + (x^2)*factor
-                    // Shift down first to keep center roughly at 0
-                    v.y += (v.x * v.x * 0.15) - 2.0; 
-                    
-                    pos.setXYZ(i, v.x, v.y, v.z);
-                }
-            }
-            break;
-        case 'KIDNEY':
-            geo = new THREE.IcosahedronGeometry(4, 5);
-            // Bean shape: Elongate Y, bend X based on Y
-            {
-                const pos = geo.attributes.position;
-                const v = new THREE.Vector3();
-                for(let i=0; i<pos.count; i++){
-                    v.fromBufferAttribute(pos, i);
-                    v.y *= 1.5; // Elongate
-                    v.x += Math.cos(v.y * 0.4) * 1.5; // Bend
-                    v.z *= 0.7; // Flatten
-                    pos.setXYZ(i, v.x, v.y, v.z);
-                }
-            }
-            break;
-        case 'LIVER':
-            geo = new THREE.IcosahedronGeometry(5, 5);
-            // Wedge shape
-            {
-                const pos = geo.attributes.position;
-                const v = new THREE.Vector3();
-                for(let i=0; i<pos.count; i++){
-                    v.fromBufferAttribute(pos, i);
-                    v.x *= 1.4;
-                    v.y *= 0.8;
-                    // Taper one side
-                    if(v.x > 0) v.y *= 0.6;
-                    pos.setXYZ(i, v.x, v.y, v.z);
-                }
-            }
-            break;
-        case 'MUSCLE':
-            // Fusiform
-            geo = new THREE.IcosahedronGeometry(3, 5);
-            {
-                const pos = geo.attributes.position;
-                const v = new THREE.Vector3();
-                for(let i=0; i<pos.count; i++){
-                    v.fromBufferAttribute(pos, i);
-                    v.y *= 3.0; // Long
-                    v.x *= 0.8; v.z *= 0.8; // Thin
-                    // Taper ends
-                    const d = Math.abs(v.y);
-                    const taper = Math.max(0.2, 1.0 - (d/10.0));
-                    v.x *= taper; v.z *= taper;
-                    pos.setXYZ(i, v.x, v.y, v.z);
-                }
-            }
-            break;
-        case 'SPLEEN':
-            // Ellipsoid
-            geo = new THREE.IcosahedronGeometry(4, 5);
-            geo.scale(1, 2, 0.5);
-            break;
-        default: // SPHERE
-            geo = new THREE.IcosahedronGeometry(5, 5);
-            break;
+window.removeInlet = (id) => {
+    const idx = state.inlets.findIndex(i => i.id === id);
+    if (idx !== -1) {
+        if (transformControls.object === state.inlets[idx].mesh) transformControls.detach();
+        scene.remove(state.inlets[idx].mesh); 
+        state.inlets.splice(idx, 1);
+        renderInletList();
     }
-
-    // Apply Noise on top of the base shape
-    const pos = geo.attributes.position;
-    const v = new THREE.Vector3();
-    const seed = Math.random()*100;
-    
-    for(let i=0; i<pos.count; i++){
-        v.fromBufferAttribute(pos, i);
-        // Perturb along normal approximately (just position vector for sphere-likes)
-        const nVal = noise.noise(v.x*0.15+seed, v.y*0.15+seed, v.z*0.15+seed);
-        const dist = v.length();
-        v.multiplyScalar(1 + (nVal * nScale * 0.2)); 
-        pos.setXYZ(i, v.x, v.y, v.z);
-    }
-    
-    geo.computeVertexNormals(); 
-    geo.computeBoundingBox();
-    setupVolume(geo);
-}
-
-window.handleFileUpload = (event) => {
-    const file = event.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const loader = new STLLoader(); const geometry = loader.parse(e.target.result);
-        geometry.computeBoundingBox(); geometry.center(); 
-        const size = new THREE.Vector3(); geometry.boundingBox.getSize(size);
-        const maxDim = Math.max(size.x, size.y, size.z);
-        if(maxDim > 10) geometry.scale(10/maxDim, 10/maxDim, 10/maxDim);
-        run(() => setupVolume(geometry));
-    };
-    reader.readAsArrayBuffer(file);
 };
 
+window.toggleBloom = () => { if(bloomPass) bloomPass.enabled = document.getElementById('c-bloom').checked; };
+window.updateBloom = () => { 
+    if(bloomPass) { 
+        const val = parseFloat(document.getElementById('i-bloom').value); 
+        const display = document.getElementById('v-bloom');
+        if(display) display.innerText = val.toFixed(2);
+        bloomPass.strength = val; 
+    } 
+};
+window.updateColorMap = () => { state.currentColorMap = document.getElementById('s-colormap').value; refreshColors(); };
+window.updatePathStyle = () => { 
+    state.currentPathStyle = document.getElementById('s-pathstyle').value; 
+    if(state.lastSourceMap) updateVisualization(state.lastSourceMap, state.lastDists, state.lastParents); 
+};
+window.toggleInlets = () => { const visible = document.getElementById('c-inlets').checked; state.inlets.forEach(inlet => inlet.mesh.visible = visible); if (!visible) transformControls.detach(); };
+window.toggleGravityGizmo = () => { const v = document.getElementById('c-gravity').checked; if(gravityGizmo) gravityGizmo.visible = v; if(!v && transformControls.object === gravityGizmo) transformControls.detach(); };
+window.togglePoints = () => { if(state.pointsMesh) state.pointsMesh.visible = document.getElementById('c-pts').checked; };
+window.toggleOrgan = () => { if(state.organMesh) state.organMesh.visible = document.getElementById('c-organ').checked; };
+window.toggleFlow = () => { if(flowSystem) flowSystem.update(); };
+
+function selectGravityGizmo() { transformControls.attach(gravityGizmo); transformControls.setMode('rotate'); renderInletList(); }
+
+function refreshColors() {
+    if(!state.linesMesh || state.segments.length === 0) return;
+    if(state.currentPathStyle === 'SMOOTH') { if(state.lastSourceMap) updateVisualization(state.lastSourceMap, state.lastDists, state.lastParents); return; }
+    const colors = []; const tempCol = new THREE.Color();
+    for(let s of state.segments) {
+        getGradientColor(Math.pow(Math.min(1.0, s.flow / (state.maxFlow || 1)), 0.4), tempCol);
+        colors.push(tempCol.r, tempCol.g, tempCol.b, tempCol.r, tempCol.g, tempCol.b);
+    }
+    state.linesMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+}
+
+// --- PARTICLE SYSTEM ---
+class FlowParticleSystem {
+    constructor() {
+        this.maxParticles = 20000;
+        this.dummy = new THREE.Object3D();
+        this.mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), this.maxParticles);
+        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(this.maxParticles * 3), 3);
+        this.mesh.frustumCulled = false;
+        this.progress = new Float32Array(this.maxParticles).map(() => Math.random());
+        this.tempCol = new THREE.Color();
+        this.posCache = new THREE.Vector3();
+    }
+    reset() { this.mesh.count = 0; this.mesh.visible = false; document.getElementById('c-flow').checked = false; }
+    show() { this.mesh.visible = true; }
+    update() {
+        const visible = document.getElementById('c-flow').checked;
+        this.mesh.visible = visible;
+        if (!visible || !state.segments.length) return;
+        const speed = parseFloat(document.getElementById('i-speed').value);
+        const exp = parseFloat(document.getElementById('i-profile').value);
+        const count = Math.min(state.segments.length, this.maxParticles);
+        for (let i = 0; i < count; i++) {
+            const seg = state.segments[i];
+            const vel = (exp < 0 ? Math.pow(seg.r, exp) * 0.2 : Math.pow(seg.r, exp) * 5.0);
+            this.progress[i] = (this.progress[i] + (vel / (seg.len + 0.0001)) * speed) % 1.0;
+            const t = this.progress[i];
+            
+            if (state.currentPathStyle === 'SMOOTH' && seg.spline) {
+                seg.spline.getPoint(t, this.posCache);
+            } else {
+                this.posCache.lerpVectors(seg.p0, seg.p1, t);
+            }
+            
+            this.dummy.position.copy(this.posCache);
+            let s = 0.025 * (1 + Math.log(1 + seg.r * 5));
+            if (seg.isTerminal) s *= (1.0 - t*t);
+            this.dummy.scale.setScalar(s);
+            this.dummy.updateMatrix();
+            this.mesh.setMatrixAt(i, this.dummy.matrix);
+            getGradientColor(Math.pow(Math.min(1.0, seg.flow / (state.maxFlow || 1)), 0.4), this.tempCol);
+            this.tempCol.multiplyScalar(3.0);
+            this.mesh.setColorAt(i, this.tempCol);
+        }
+        this.mesh.count = count; this.mesh.instanceMatrix.needsUpdate = true; this.mesh.instanceColor.needsUpdate = true;
+    }
+}
+
+window.addInlet = () => {
+    if (state.inlets.length >= 4) return;
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 32, 32), new THREE.MeshBasicMaterial({ color: 0x00f3ff }));
+    mesh.add(new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.2, wireframe: true })));
+    mesh.position.set(-6, (state.inlets.length * 2) - 2, 0);
+    scene.add(mesh);
+    state.inlets.push({ mesh, id: ++state.inletCounter });
+    renderInletList(); selectInlet(state.inlets[state.inlets.length-1]);
+};
+
+window.genVolume = async function genVolume() {
+    const nScale = parseFloat(document.getElementById('i-noise').value);
+    const type = document.getElementById('s-organ').value;
+    let geo = new THREE.IcosahedronGeometry(5, 5);
+    const pos = geo.attributes.position, v = new THREE.Vector3();
+    for(let i=0; i<pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        if(type === 'HEART') { v.z *= 0.8; v.x *= 1.5; v.y += (v.x * v.x * 0.15) - 2.0; }
+        else if(type === 'KIDNEY') { v.y *= 1.5; v.x += Math.cos(v.y * 0.4) * 1.5; v.z *= 0.7; }
+        else if(type === 'MUSCLE') { v.y *= 3.0; v.x *= 0.8; v.z *= 0.8; const taper = Math.max(0.2, 1.0 - (Math.abs(v.y)/10.0)); v.x *= taper; v.z *= taper; }
+        else if(type === 'LIVER') { v.x *= 1.4; v.y *= 0.8; if(v.x > 0) v.y *= 0.6; }
+        else if(type === 'SPLEEN') { v.x *= 1.2; v.y *= 1.8; v.z *= 0.6; }
+        const n = noise.noise(v.x*0.15, v.y*0.15, v.z*0.15);
+        v.multiplyScalar(1 + (n * nScale * 0.2));
+        pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    geo.computeVertexNormals(); geo.computeBoundingBox(); setupVolume(geo);
+}
+
 function setupVolume(geo) {
-    // Reset Data State
-    state.segments = [];
-    state.leaves.clear();
-    state.maxFlow = 1;
-    if(flowSystem) flowSystem.reset();
-
-    // Reset Meshes
-    if(state.organMesh) { scene.remove(state.organMesh); state.organMesh.geometry.dispose(); }
-    if(state.linesMesh) { scene.remove(state.linesMesh); state.linesMesh.geometry.dispose(); }
-    if(state.pointsMesh) { scene.remove(state.pointsMesh); state.pointsMesh.geometry.dispose(); }
-    
-    const wireMat = new THREE.MeshBasicMaterial({color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.05 });
-    state.organMesh = new THREE.Mesh(geo, wireMat);
-    state.organMesh.visible = document.getElementById('c-organ') ? document.getElementById('c-organ').checked : true;
-    scene.add(state.organMesh);
-
+    state.segments = []; state.maxFlow = 1; if(flowSystem) flowSystem.reset();
+    if(state.organMesh) scene.remove(state.organMesh);
+    if(state.linesMesh) {
+        scene.remove(state.linesMesh);
+        state.linesMesh = null;
+    }
+    if(state.pointsMesh) scene.remove(state.pointsMesh);
+    state.organMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.05 }));
+    state.organMesh.visible = document.getElementById('c-organ').checked; scene.add(state.organMesh);
     const box = geo.boundingBox, size = new THREE.Vector3(); box.getSize(size);
     const ray = new THREE.Raycaster(), rayDir = new THREE.Vector3(1,0,0), meshD = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
     meshD.updateMatrixWorld();
-    
-    const targetPoints = parseInt(document.getElementById('i-points').value) || 3000;
-    const pts = [];
-    let attempts = 0;
-    const maxAttempts = targetPoints * 15; 
-    
-    while(pts.length < targetPoints && attempts < maxAttempts) {
-        attempts++;
-        const p = new THREE.Vector3(
-            box.min.x + Math.random()*size.x, 
-            box.min.y + Math.random()*size.y, 
-            box.min.z + Math.random()*size.z
-        );
-        ray.set(p, rayDir); 
-        // Odd number of intersections = inside
-        if(ray.intersectObject(meshD).length % 2 === 1) {
-            pts.push({ x:p.x, y:p.y, z:p.z, ox:p.x, oy:p.y, oz:p.z, id:pts.length, neighbors: [] });
-        }
+    const count = parseInt(document.getElementById('i-points').value), pts = [];
+    while(pts.length < count) {
+        const p = new THREE.Vector3(box.min.x + Math.random()*size.x, box.min.y + Math.random()*size.y, box.min.z + Math.random()*size.z);
+        ray.set(p, rayDir); if(ray.intersectObject(meshD).length % 2 === 1) pts.push({ x:p.x, y:p.y, z:p.z, ox:p.x, oy:p.y, oz:p.z, id:pts.length, neighbors: [] });
     }
     state.nodes = pts;
-
-    const pGeo = new THREE.BufferGeometry(), pPos = new Float32Array(pts.length * 3);
-    for(let i=0; i<pts.length; i++) { pPos[i*3]=pts[i].x; pPos[i*3+1]=pts[i].y; pPos[i*3+2]=pts[i].z; }
-    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const pPos = new Float32Array(pts.length * 3); for(let i=0; i<pts.length; i++) { pPos[i*3]=pts[i].x; pPos[i*3+1]=pts[i].y; pPos[i*3+2]=pts[i].z; }
+    const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
     state.pointsMesh = new THREE.Points(pGeo, new THREE.PointsMaterial({color: 0x445566, size: 0.05, transparent: true, opacity: 0.6}));
-    state.pointsMesh.visible = document.getElementById('c-pts').checked;
-    state.pointsMesh.frustumCulled = false;
-    scene.add(state.pointsMesh);
-
-    const densityFactor = Math.pow(3000 / targetPoints, 0.33); 
-    const connDist = 1.25 * densityFactor;
-    const connDistSq = connDist**2;
-    
+    state.pointsMesh.visible = document.getElementById('c-pts').checked; state.pointsMesh.frustumCulled = false; scene.add(state.pointsMesh);
+    const cDistSq = (1.25 * Math.pow(3000 / count, 0.33))**2;
     for(let i=0; i<pts.length; i++) {
         for(let j=i+1; j<pts.length; j++) {
             const d2 = (pts[i].x-pts[j].x)**2 + (pts[i].y-pts[j].y)**2 + (pts[i].z-pts[j].z)**2;
-            if(d2 < connDistSq) {
-                const d = Math.sqrt(d2);
-                pts[i].neighbors.push({ to: j, dist: d, cond: 1.0, flow: 0 });
-                pts[j].neighbors.push({ to: i, dist: d, cond: 1.0, flow: 0 });
-            }
+            if(d2 < cDistSq) { const d = Math.sqrt(d2); pts[i].neighbors.push({ to: j, dist: d, cond: 1.0, flow: 0 }); pts[j].neighbors.push({ to: i, dist: d, cond: 1.0, flow: 0 }); }
         }
     }
-    document.getElementById('s-voxels').innerText = pts.length;
-    document.getElementById('btn-grow').disabled = false;
+    document.getElementById('s-voxels').innerText = pts.length; document.getElementById('btn-grow').disabled = false;
 }
 
-window.togglePoints = () => { if(state.pointsMesh) state.pointsMesh.visible = document.getElementById('c-pts').checked; }
-window.toggleOrgan = () => { if(state.organMesh) state.organMesh.visible = document.getElementById('c-organ').checked; }
-
-async function growVessels() {
+window.growVessels = async function growVessels() {
     controls.autoRotate = false; transformControls.detach();
-    if(state.linesMesh) { scene.remove(state.linesMesh); state.linesMesh.geometry.dispose(); }
-    if (state.inlets.length === 0) { alert("ERROR: NO INLET SOURCES DEFINED"); return; }
-    
-    if(flowSystem) flowSystem.reset();
-
-    const posAttr = state.pointsMesh.geometry.attributes.position;
-    for(let i=0; i<state.nodes.length; i++) {
-        state.nodes[i].x = state.nodes[i].ox; state.nodes[i].y = state.nodes[i].oy; state.nodes[i].z = state.nodes[i].oz;
-        state.nodes[i].neighbors.forEach(e => { e.cond = 1.0; e.flow = 0; });
-        posAttr.setXYZ(i, state.nodes[i].x, state.nodes[i].y, state.nodes[i].z);
+    if(state.linesMesh) {
+        scene.remove(state.linesMesh);
+        state.linesMesh = null; 
     }
-    posAttr.needsUpdate = true;
-
-    // Get gravity params from gizmo if enabled
-    const gStrength = parseFloat(document.getElementById('i-g-str').value);
-    // Gravity vector is Arrow Direction (which defaults to 0,-1,0).
-    // Apply Gizmo rotation to 0,-1,0
-    const gVector = new THREE.Vector3(0, -1, 0);
-    if(gravityGizmo) gVector.applyQuaternion(gravityGizmo.quaternion).normalize();
-
-    const sourceMap = state.inlets.map(inlet => {
-        let minDist = Infinity, nearestIdx = 0;
-        for(let i=0; i<state.nodes.length; i++){
-            const d2 = inlet.mesh.position.distanceToSquared(state.nodes[i]);
-            if(d2 < minDist){ minDist = d2; nearestIdx = i; }
-        }
-        return { inlet, nodeIdx: nearestIdx };
-    });
-    const sourceIndices = sourceMap.map(m => m.nodeIdx);
-
-    const numTargets = parseInt(document.getElementById('i-targets').value);
-    const indices = Array.from({length: state.nodes.length}, (_, k) => k);
-    for(let i=indices.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [indices[i], indices[j]] = [indices[j], indices[i]]; }
-    state.targets = indices.slice(0, numTargets).filter(id => !sourceIndices.includes(id));
-
-    const iterations = 8;
-    const bundleFactor = parseFloat(document.getElementById('i-bundle').value);
-
-    state.linesMesh = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2, transparent: true, blending: THREE.AdditiveBlending }));
-    state.linesMesh.frustumCulled = false;
-    scene.add(state.linesMesh);
+    if(flowSystem) flowSystem.reset();
     
-    for(let iter=0; iter<iterations; iter++) {
-        await new Promise(r => setTimeout(r, 10)); 
-
-        const dists = new Float32Array(state.nodes.length).fill(Infinity);
-        const parents = new Int32Array(state.nodes.length).fill(-1);
+    state.currentPathStyle = document.getElementById('s-pathstyle').value;
+    
+    const gStr = parseFloat(document.getElementById('i-g-str').value);
+    const gVec = new THREE.Vector3(0,-1,0); if(gravityGizmo) gVec.applyQuaternion(gravityGizmo.quaternion).normalize();
+    const bundle = parseFloat(document.getElementById('i-bundle').value);
+    const sourceMap = state.inlets.map(inlet => {
+        let minD = Infinity, idx = 0;
+        for(let i=0; i<state.nodes.length; i++){ const d2 = inlet.mesh.position.distanceToSquared(state.nodes[i]); if(d2 < minD){ minD = d2; idx = i; } }
+        return { inlet, nodeIdx: idx };
+    });
+    const sIndices = sourceMap.map(m => m.nodeIdx);
+    const tCount = parseInt(document.getElementById('i-targets').value), indices = Array.from({length: state.nodes.length}, (_, k) => k);
+    for(let i=indices.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [indices[i], indices[j]] = [indices[j], indices[i]]; }
+    state.targets = indices.slice(0, tCount).filter(id => !sIndices.includes(id));
+    
+    let parents = new Int32Array(state.nodes.length).fill(-1);
+    let dists = new Float32Array(state.nodes.length).fill(Infinity);
+    
+    for(let iter=0; iter<8; iter++) {
+        await new Promise(r => setTimeout(r, 10));
+        dists.fill(Infinity); parents.fill(-1);
         const visited = new Uint8Array(state.nodes.length).fill(0);
-        let active = new Set();
-        sourceIndices.forEach(idx => { dists[idx] = 0; active.add(idx); });
-
+        let active = new Set(); sIndices.forEach(idx => { dists[idx] = 0; active.add(idx); });
         while(active.size > 0) {
-            let u = -1, minD = Infinity;
-            for(let id of active) { if(dists[id] < minD) { minD = dists[id]; u = id; } }
-            if(u === -1) break;
-            active.delete(u); visited[u] = 1;
-
-            const n = state.nodes[u];
-            for(let edge of n.neighbors) {
+            let u = -1, minD = Infinity; for(let id of active) { if(dists[id] < minD) { minD = dists[id]; u = id; } }
+            if(u === -1) break; active.delete(u); visited[u] = 1;
+            for(let edge of state.nodes[u].neighbors) {
                 if(visited[edge.to]) continue;
-                
-                // Gravity Penalty Calculation
-                let gravPenalty = 0;
-                if (gStrength > 0) {
-                    const targetNode = state.nodes[edge.to];
-                    const dx = targetNode.x - n.x;
-                    const dy = targetNode.y - n.y;
-                    const dz = targetNode.z - n.z;
-                    // Dot product of edge direction and gravity vector
-                    const dot = (dx*gVector.x + dy*gVector.y + dz*gVector.z) / edge.dist;
-                    
-                    // Logic: If moving in direction of gravity (dot > 0), low cost.
-                    // If moving against gravity (dot < 0), high cost.
-                    // We want to PENALIZE moving AGAINST gravity.
-                    // Dot = 1 (Aligned with G) -> Penalty 0
-                    // Dot = -1 (Against G) -> Penalty 2 * Strength
-                    gravPenalty = gStrength * (1.0 - dot); 
-                }
-
-                const cost = (edge.dist * (1.0 + gravPenalty)) / (1.0 + bundleFactor * edge.cond);
-                const alt = dists[u] + cost;
-                if(alt < dists[edge.to]) {
-                    dists[edge.to] = alt;
-                    parents[edge.to] = u;
-                    active.add(edge.to);
-                }
+                const dir = new THREE.Vector3(state.nodes[edge.to].x - state.nodes[u].x, state.nodes[edge.to].y - state.nodes[u].y, state.nodes[edge.to].z - state.nodes[u].z).normalize();
+                const penalty = gStr * (1.0 - dir.dot(gVec));
+                const cost = (edge.dist * (1.0 + penalty)) / (1.0 + bundle * edge.cond);
+                if(dists[u] + cost < dists[edge.to]) { dists[edge.to] = dists[u] + cost; parents[edge.to] = u; active.add(edge.to); }
             }
         }
-
         for(let n of state.nodes) n.neighbors.forEach(e => e.flow = 0);
         for(let t of state.targets) {
-            let curr = t;
-            while(!sourceIndices.includes(curr) && curr !== -1) {
-                const p = parents[curr];
-                if(p === -1) break;
+            let curr = t; while(!sIndices.includes(curr) && curr !== -1) {
+                const p = parents[curr]; if(p === -1) break;
                 state.nodes[p].neighbors.find(e => e.to === curr).flow += 1;
                 state.nodes[curr].neighbors.find(e => e.to === p).flow += 1;
                 curr = p;
             }
         }
-
-        if(iter < iterations-1) {
-            for(let n of state.nodes) n.neighbors.forEach(e => e.cond += e.flow);
-        }
-        
-        updateVisualization(sourceMap, dists);
+        if(iter < 7) for(let n of state.nodes) n.neighbors.forEach(e => e.cond += e.flow);
+        updateVisualization(sourceMap, dists, parents);
     }
-
-    document.getElementById('c-flow').disabled = false;
-    document.getElementById('c-flow').checked = true; 
-    flowSystem.show();
-
-    ['btn-exp-vessel','btn-exp-obj'].forEach(id => document.getElementById(id).disabled = false);
+    state.lastParents = parents; state.lastDists = dists; state.lastSourceMap = sourceMap;
+    document.getElementById('c-flow').disabled = false; document.getElementById('c-flow').checked = true;
+    if(flowSystem) flowSystem.show(); ['btn-exp-vessel','btn-exp-obj'].forEach(id => document.getElementById(id).disabled = false);
 }
 
-function updateVisualization(sourceMap, dists) {
-    state.segments = [];
-    state.leaves.clear();
-    let maxFlow = 0;
-    
-    for(let i=0; i<state.nodes.length; i++) {
-        for(let edge of state.nodes[i].neighbors) {
-            if(edge.to > i && edge.flow > 0) {
-                maxFlow = Math.max(maxFlow, edge.flow);
-                const nA = state.nodes[i];
-                const nB = state.nodes[edge.to];
-                let pStart, pEnd, pEndIdx;
-                if(dists && dists[i] < dists[edge.to]) {
-                    pStart = nA; pEnd = nB; pEndIdx = edge.to;
-                } else {
-                    pStart = nB; pEnd = nA; pEndIdx = i;
-                }
-                const dx = pStart.x - pEnd.x; const dy = pStart.y - pEnd.y; const dz = pStart.z - pEnd.z;
-                const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
-                state.segments.push({ p0: pStart, p1: pEnd, flow: edge.flow, endIdx: pEndIdx, len: len });
-            }
-        }
-    }
+function updateVisualization(sourceMap, dists, parents) {
+    state.segments = []; let maxF = 0;
+    const pathStyle = document.getElementById('s-pathstyle').value;
+    state.currentPathStyle = pathStyle;
+    const isSmooth = pathStyle === 'SMOOTH';
+    const tree = new Map();
     
     sourceMap.forEach(m => {
-        const n = state.nodes[m.nodeIdx];
-        let sumF = 0; n.neighbors.forEach(e => sumF += e.flow);
-        if(sumF > 0) {
-            maxFlow = Math.max(maxFlow, sumF);
-            const len = m.inlet.mesh.position.distanceTo(n);
-            state.segments.push({ p0: m.inlet.mesh.position, p1: n, flow: sumF, endIdx: m.nodeIdx, len: len });
+        const n = state.nodes[m.nodeIdx]; let f = 0; n.neighbors.forEach(e => f += e.flow);
+        if(f > 0) {
+            maxF = Math.max(maxF, f);
+            state.segments.push({ p0: m.inlet.mesh.position, p1: n, flow: f, endIdx: m.nodeIdx, len: m.inlet.mesh.position.distanceTo(n) });
+            if(!tree.has(-100 - m.id)) tree.set(-100 - m.id, []); tree.get(-100 - m.id).push(m.nodeIdx);
         }
     });
 
-    state.maxFlow = maxFlow;
-    state.segments.forEach(s => { s.isTerminal = (s.flow <= 1); });
-
-    const pos = [], cols = [];
-    const tempCol = new THREE.Color();
-
-    for(let s of state.segments) {
-        pos.push(s.p0.x, s.p0.y, s.p0.z, s.p1.x, s.p1.y, s.p1.z);
-        s.r = Math.sqrt(s.flow) * 0.06;
-        const t = Math.pow(Math.min(1.0, s.flow / maxFlow), 0.4);
-        getGradientColor(t, tempCol);
-        cols.push(tempCol.r, tempCol.g, tempCol.b, tempCol.r, tempCol.g, tempCol.b);
+    for(let i=0; i<state.nodes.length; i++) {
+        const p = parents[i];
+        if(p !== -1) {
+            const edge = state.nodes[i].neighbors.find(e => e.to === p);
+            if(edge && edge.flow > 0) {
+                maxF = Math.max(maxF, edge.flow);
+                state.segments.push({ p0: state.nodes[p], p1: state.nodes[i], flow: edge.flow, endIdx: i, len: edge.dist });
+                if(!tree.has(p)) tree.set(p, []); tree.get(p).push(i);
+            }
+        }
     }
+    state.maxFlow = maxF;
+    state.segments.forEach(s => { s.r = Math.sqrt(s.flow) * 0.06; s.isTerminal = (s.flow <= 1); });
+
+    const pos = []; const col = []; const tCol = new THREE.Color();
     
-    const geo = state.linesMesh.geometry;
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-    geo.setDrawRange(0, pos.length/3);
-    geo.computeBoundingSphere();
+    if (isSmooth) {
+        state.segments.forEach(s => {
+            const nodeP = state.nodes.find(n => n.x === s.p0.x && n.y === s.p0.y);
+            const pIdx = nodeP ? state.nodes.indexOf(nodeP) : -1;
+            const gpIdx = (pIdx !== -1) ? parents[pIdx] : -1;
+            
+            const p_minus_1 = gpIdx !== -1 ? state.nodes[gpIdx] : {
+                x: s.p0.x - (s.p1.x - s.p0.x) * 0.5,
+                y: s.p0.y - (s.p1.y - s.p0.y) * 0.5,
+                z: s.p0.z - (s.p1.z - s.p0.z) * 0.5
+            };
+            
+            const children = tree.get(s.endIdx);
+            const p_plus_1 = (children && children.length > 0) ? state.nodes[children[0]] : {
+                x: s.p1.x + (s.p1.x - s.p0.x) * 0.5,
+                y: s.p1.y + (s.p1.y - s.p0.y) * 0.5,
+                z: s.p1.z + (s.p1.z - s.p0.z) * 0.5
+            };
+
+            const curve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(p_minus_1.x, p_minus_1.y, p_minus_1.z),
+                new THREE.Vector3(s.p0.x, s.p0.y, s.p0.z),
+                new THREE.Vector3(s.p1.x, s.p1.y, s.p1.z),
+                new THREE.Vector3(p_plus_1.x, p_plus_1.y, p_plus_1.z)
+            ]);
+            s.spline = curve;
+            
+            const drawPts = curve.getPoints(6);
+            for(let k=0; k<drawPts.length-1; k++) {
+                pos.push(drawPts[k].x, drawPts[k].y, drawPts[k].z, drawPts[k+1].x, drawPts[k+1].y, drawPts[k+1].z);
+                getGradientColor(Math.pow(Math.min(1.0, s.flow / maxF), 0.4), tCol);
+                col.push(tCol.r, tCol.g, tCol.b, tCol.r, tCol.g, tCol.b);
+            }
+        });
+    } else {
+        for(let s of state.segments) {
+            pos.push(s.p0.x, s.p0.y, s.p0.z, s.p1.x, s.p1.y, s.p1.z);
+            getGradientColor(Math.pow(Math.min(1.0, s.flow / maxF), 0.4), tCol);
+            col.push(tCol.r, tCol.g, tCol.b, tCol.r, tCol.g, tCol.b);
+        }
+    }
+
+    if(!state.linesMesh) {
+        state.linesMesh = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending }));
+        state.linesMesh.frustumCulled = false;
+        scene.add(state.linesMesh);
+    }
+    state.linesMesh.geometry.dispose(); 
+    state.linesMesh.geometry = new THREE.BufferGeometry();
+    state.linesMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    state.linesMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     
     document.getElementById('s-segs').innerText = state.segments.length;
 }
 
 window.exportData = (type) => {
-    let content = "", mime = "application/json", ext = "json";
-    if(type === 'vessels') {
-        content = JSON.stringify(state.segments.map(s => ({ 
-            p1: [s.p0.x, s.p0.y, s.p0.z], 
-            p2: [s.p1.x, s.p1.y, s.p1.z], 
-            flow: s.flow 
-        })));
-    } else {
-        content = "# Vascular Tree OBJ\n";
-        let vIdx = 1;
-        state.segments.forEach(s => {
-            content += `v ${s.p0.x} ${s.p0.y} ${s.p0.z}\n`;
-            content += `v ${s.p1.x} ${s.p1.y} ${s.p1.z}\n`;
-            content += `l ${vIdx} ${vIdx+1}\n`;
-            vIdx += 2;
-        });
-        mime = "text/plain"; ext = "obj";
-    }
-    const blob = new Blob([content], {type: mime});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `vascular_data.${ext}`;
-    a.click();
+    let content = "";
+    if(type === 'vessels') content = JSON.stringify(state.segments.map(s => ({ p1: [s.p0.x, s.p0.y, s.p0.z], p2: [s.p1.x, s.p1.y, s.p1.z], flow: s.flow })));
+    else { content = "# Vascular Tree OBJ\n"; let vIdx = 1; state.segments.forEach(s => { content += `v ${s.p0.x} ${s.p0.y} ${s.p0.z}\nv ${s.p1.x} ${s.p1.y} ${s.p1.z}\nl ${vIdx} ${vIdx+1}\n`; vIdx += 2; }); }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content])); a.download = `vascular_data.${type==='vessels'?'json':'obj'}`; a.click();
 };
 
-window.genVolume = genVolume;
-window.growVessels = growVessels;
+window.handleFileUpload = (e) => {
+    const reader = new FileReader(); reader.onload = (ev) => {
+        const geo = new STLLoader().parse(ev.target.result); geo.computeBoundingBox(); geo.center();
+        const size = new THREE.Vector3(); geo.boundingBox.getSize(size); const max = Math.max(size.x, size.y, size.z);
+        if(max > 10) geo.scale(10/max, 10/max, 10/max); window.run(() => setupVolume(geo));
+    };
+    reader.readAsArrayBuffer(e.target.files[0]);
+};
 
 init();
 </script>
