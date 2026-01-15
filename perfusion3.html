@@ -646,8 +646,13 @@ function setupVolume(geo) {
     meshD.updateMatrixWorld();
     const count = parseInt(document.getElementById('i-points').value), pts = [];
     while(pts.length < count) {
-        const p = new THREE.Vector3(box.min.x + Math.random()*size.x, box.min.y + Math.random()*size.y, box.min.z + Math.random()*size.z);
-        ray.set(p, rayDir); if(ray.intersectObject(meshD).length % 2 === 1) pts.push({ x:p.x, y:p.y, z:p.z, ox:p.x, oy:p.y, oz:p.z, id:pts.length, neighbors: [] });
+        const pVec = new THREE.Vector3(box.min.x + Math.random()*size.x, box.min.y + Math.random()*size.y, box.min.z + Math.random()*size.z);
+        ray.set(pVec, rayDir);
+        if(ray.intersectObject(meshD).length % 2 === 1) {
+            // store nodes as plain objects (x,y,z,ox,oy,oz,id,neighbors) to match perfusion2 logic
+            const p = { x: pVec.x, y: pVec.y, z: pVec.z, ox: pVec.x, oy: pVec.y, oz: pVec.z, id: pts.length, neighbors: [] };
+            pts.push(p);
+        }
     }
     state.nodes = pts;
     const pPos = new Float32Array(pts.length * 3); for(let i=0; i<pts.length; i++) { pPos[i*3]=pts[i].x; pPos[i*3+1]=pts[i].y; pPos[i*3+2]=pts[i].z; }
@@ -657,8 +662,13 @@ function setupVolume(geo) {
     const cDistSq = (1.25 * Math.pow(3000 / count, 0.33))**2;
     for(let i=0; i<pts.length; i++) {
         for(let j=i+1; j<pts.length; j++) {
-            const d2 = (pts[i].x-pts[j].x)**2 + (pts[i].y-pts[j].y)**2 + (pts[i].z-pts[j].z)**2;
-            if(d2 < cDistSq) { const d = Math.sqrt(d2); pts[i].neighbors.push({ to: j, dist: d, cond: 1.0, flow: 0 }); pts[j].neighbors.push({ to: i, dist: d, cond: 1.0, flow: 0 }); }
+            const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y, dz = pts[i].z - pts[j].z;
+            const d2 = dx*dx + dy*dy + dz*dz;
+            if(d2 < cDistSq) {
+                const d = Math.sqrt(d2);
+                pts[i].neighbors.push({ to: j, dist: d, cond: 1.0, flow: 0 });
+                pts[j].neighbors.push({ to: i, dist: d, cond: 1.0, flow: 0 });
+            }
         }
     }
     document.getElementById('s-voxels').innerText = pts.length; document.getElementById('btn-grow').disabled = false;
@@ -672,6 +682,20 @@ window.growVessels = async function growVessels() {
     }
     if(flowSystem) flowSystem.reset();
     
+    console.log('growVessels: start', { nodes: state.nodes.length, inlets: state.inlets.length });
+
+    // Reset node positions and per-edge conductivity/flow (matches perfusion2 behavior)
+    if(state.pointsMesh && state.pointsMesh.geometry && state.pointsMesh.geometry.attributes.position) {
+        const posAttr = state.pointsMesh.geometry.attributes.position;
+        for(let i=0; i<state.nodes.length; i++) {
+            const n = state.nodes[i];
+            if(n.ox !== undefined) { n.x = n.ox; n.y = n.oy; n.z = n.oz; }
+            if(n.neighbors) n.neighbors.forEach(e => { e.cond = 1.0; e.flow = 0; });
+            posAttr.setXYZ(i, n.x, n.y, n.z);
+        }
+        posAttr.needsUpdate = true;
+    }
+
     state.currentPathStyle = document.getElementById('s-pathstyle').value;
     
     const gStr = parseFloat(document.getElementById('i-g-str').value);
@@ -682,10 +706,12 @@ window.growVessels = async function growVessels() {
         for(let i=0; i<state.nodes.length; i++){ const d2 = inlet.mesh.position.distanceToSquared(state.nodes[i]); if(d2 < minD){ minD = d2; idx = i; } }
         return { inlet, nodeIdx: idx };
     });
+    console.log('growVessels: sourceMap', sourceMap.map(s=>({id:s.inlet.id,nodeIdx:s.nodeIdx})));
     const sIndices = sourceMap.map(m => m.nodeIdx);
     const tCount = parseInt(document.getElementById('i-targets').value), indices = Array.from({length: state.nodes.length}, (_, k) => k);
     for(let i=indices.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [indices[i], indices[j]] = [indices[j], indices[i]]; }
     state.targets = indices.slice(0, tCount).filter(id => !sIndices.includes(id));
+    console.log('growVessels: targets count', state.targets.length);
     
     let parents = new Int32Array(state.nodes.length).fill(-1);
     let dists = new Float32Array(state.nodes.length).fill(Infinity);
@@ -718,6 +744,7 @@ window.growVessels = async function growVessels() {
         if(iter < 7) for(let n of state.nodes) n.neighbors.forEach(e => e.cond += e.flow);
         updateVisualization(sourceMap, dists, parents);
     }
+    console.log('growVessels: finished iterations; segments', state.segments.length);
     state.lastParents = parents; state.lastDists = dists; state.lastSourceMap = sourceMap;
     document.getElementById('c-flow').disabled = false; document.getElementById('c-flow').checked = true;
     if(flowSystem) flowSystem.show(); ['btn-exp-vessel','btn-exp-obj','btn-animate'].forEach(id => document.getElementById(id).disabled = false);
@@ -862,6 +889,7 @@ function updateVisualization(sourceMap, dists, parents) {
     state.segments.forEach(s => { s.r = Math.sqrt(s.flow) * 0.06; s.isTerminal = (s.flow <= 1); });
 
     const pos = []; const col = []; const tCol = new THREE.Color();
+    console.log('updateVisualization: segments built', state.segments.length, 'isSmooth', isSmooth);
     
     if (isSmooth) {
         state.segments.forEach(s => {
@@ -910,10 +938,11 @@ function updateVisualization(sourceMap, dists, parents) {
         state.linesMesh.frustumCulled = false;
         scene.add(state.linesMesh);
     }
-    state.linesMesh.geometry.dispose(); 
+    try { if(state.linesMesh.geometry) state.linesMesh.geometry.dispose(); } catch(e){ console.warn('dispose failed', e); }
     state.linesMesh.geometry = new THREE.BufferGeometry();
     state.linesMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     state.linesMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    console.log('updateVisualization: geometry attrs', state.linesMesh.geometry.attributes.position.count, state.linesMesh.geometry.attributes.color.count);
     
     document.getElementById('s-segs').innerText = state.segments.length;
 }
