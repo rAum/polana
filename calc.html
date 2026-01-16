@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Term Sheet VC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .slider-thumb::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; background: #3b82f6; border-radius: 50%; cursor: pointer; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 text-center md:text-left">
+            <h1 class="text-3xl font-bold text-gray-900">Symulator Oferty Inwestycyjnej (Term Sheet)</h1>
+            <p class="text-gray-600 mt-2">Analiza opłacalności: Equity + Vesting + Preference Stack</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Lewa Kolumna: Parametry wejściowe -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Sekcja 1: Obecna Sytuacja -->
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">1. Twoja Pozycja</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Twoje obecne udziały (Pre-money)</label>
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="userSharesPre" value="10" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculate()">
+                                <span class="ml-2 text-gray-500">%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Roczna pensja (Brutto)</label>
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="salary" value="330000" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculate()">
+                                <span class="ml-2 text-gray-500">PLN</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sekcja 2: Oferta Inwestora -->
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">2. Oferta Inwestora</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Kwota Inwestycji</label>
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="invAmount" value="7500000" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculate()">
+                                <span class="ml-2 text-gray-500">PLN</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Udziały dla Inwestora (Post-money)</label>
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="invPercent" value="21" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculate()">
+                                <span class="ml-2 text-gray-500">%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Liquidation Preference (Mnożnik)</label>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-gray-500">1x (Standard)</span>
+                                <span class="text-xs text-red-500 font-bold">1.5x (Agresywne)</span>
+                            </div>
+                            <input type="range" id="liqPref" min="1" max="2" step="0.1" value="1.5" class="w-full mt-2" oninput="document.getElementById('liqPrefVal').innerText = this.value + 'x'; calculate()">
+                            <div class="text-right text-sm font-bold text-blue-600" id="liqPrefVal">1.5x</div>
+                            <p class="text-xs text-gray-500 mt-1">Mnożnik zwrotu, który inwestor musi otrzymać PRZED Tobą.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">ESOP (z puli founderów)</label>
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="esopPercent" value="7" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculate()">
+                                <span class="ml-2 text-gray-500">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sekcja 3: Scenariusz Wyjścia -->
+                <div class="card p-6 border-l-4 border-green-500">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">3. Scenariusz Wyjścia</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Wycena przy sprzedaży (Exit)</label>
+                            <input type="range" id="exitValSlider" min="5000000" max="200000000" step="1000000" value="40000000" class="w-full mt-2" oninput="syncExitVal(this.value)">
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="exitValInput" value="40000000" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none" oninput="syncExitVal(this.value)">
+                                <span class="ml-2 text-gray-500">PLN</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Czas pracy (Vesting)</label>
+                            <input type="range" id="monthsWorked" min="0" max="48" step="1" value="48" class="w-full mt-2" oninput="document.getElementById('monthsVal').innerText = this.value + ' m-cy'; calculate()">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-red-500">Start (0%)</span>
+                                <span class="font-bold text-blue-600" id="monthsVal">48 m-cy</span>
+                                <span class="text-green-500">4 lata (100%)</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">75% udziałów podlega vestingowi. 25% masz 'bezpieczne'.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Prawa Kolumna: Wyniki -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="card p-4 text-center">
+                        <p class="text-xs text-gray-500 uppercase font-bold">Wycena Post-Money</p>
+                        <p class="text-lg md:text-xl font-bold text-gray-800" id="postMoneyVal">-</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <p class="text-xs text-gray-500 uppercase font-bold">Twoje Nowe Udziały</p>
+                        <p class="text-lg md:text-xl font-bold text-blue-600" id="userDilutedShares">-</p>
+                        <p class="text-xs text-red-400" id="dilutionInfo">(Rozwodnienie)</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <p class="text-xs text-gray-500 uppercase font-bold">Próg Pref. (Hurdle)</p>
+                        <p class="text-lg md:text-xl font-bold text-orange-600" id="prefHurdle">-</p>
+                        <p class="text-xs text-gray-400">Inwestor bierze pierwszy</p>
+                    </div>
+                    <div class="card p-4 text-center bg-gray-50">
+                        <p class="text-xs text-gray-500 uppercase font-bold">Całkowita Wartość dla Ciebie</p>
+                        <p class="text-xl md:text-2xl font-bold text-green-600" id="totalUserValue">-</p>
+                        <p class="text-xs text-gray-500">Equity + Pensja</p>
+                    </div>
+                </div>
+
+                <!-- Waterfall Chart Area -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Podział Tortu przy Wyjściu (Waterfall)</h3>
+                    <div class="relative h-64 w-full">
+                        <canvas id="waterfallChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-600 bg-yellow-50 p-3 rounded border border-yellow-200">
+                        <strong>Uwaga o Liquidation Preference:</strong> Przy mnożniku <span id="prefNoteMult">1.5x</span>, inwestor ma zagwarantowane <span id="prefNoteAmt" class="font-bold">-</span> zanim inni wspólnicy dostaną cokolwiek. Jeśli wycena wyjścia jest niska, inwestor może zabrać większość lub całość pieniędzy.
+                    </div>
+                </div>
+
+                <!-- Detailed Breakdown Table -->
+                <div class="card p-6 overflow-x-auto">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Szczegółowe Rozliczenie (Dla Ciebie)</h3>
+                    <table class="w-full text-sm text-left text-gray-600">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                            <tr>
+                                <th class="px-6 py-3">Składnik</th>
+                                <th class="px-6 py-3 text-right">Wartość</th>
+                                <th class="px-6 py-3">Komentarz</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="bg-white border-b">
+                                <td class="px-6 py-4 font-medium text-gray-900">Wartość Udziałów (Equity)</td>
+                                <td class="px-6 py-4 text-right font-bold text-blue-600" id="tableEquity">-</td>
+                                <td class="px-6 py-4">Po odjęciu Preference Stack i uwzględnieniu Vestingu</td>
+                            </tr>
+                            <tr class="bg-gray-50 border-b">
+                                <td class="px-6 py-4 font-medium text-gray-900">Suma Wynagrodzeń (Pensja)</td>
+                                <td class="px-6 py-4 text-right font-bold text-green-600" id="tableSalary">-</td>
+                                <td class="px-6 py-4">Brutto za przepracowany okres (<span id="tableMonths">-</span> m-cy)</td>
+                            </tr>
+                            <tr class="bg-white text-lg">
+                                <td class="px-6 py-4 font-bold text-gray-900">SUMA</td>
+                                <td class="px-6 py-4 text-right font-bold text-gray-900" id="tableTotal">-</td>
+                                <td class="px-6 py-4">Całkowity zysk brutto</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Analysis / Warning -->
+                <div class="card p-6 border border-red-100 bg-red-50">
+                    <h3 class="text-lg font-bold text-red-800 mb-2">Analiza Ryzyka</h3>
+                    <ul class="list-disc list-inside space-y-2 text-sm text-red-700">
+                        <li><strong>Pułapka 1.5x Preference:</strong> Oznacza to, że firma musi zostać sprzedana za co najmniej <span id="trapVal">-</span> PLN (Post-money), abyś w ogóle zyskał na wzroście wartości udziałów ponad ich nominalną wartość.</li>
+                        <li><strong>Vesting:</strong> Jeśli odejdziesz jako "Bad Leaver" (zazwyczaj dyscyplinarka lub naruszenie umowy), możesz stracić wszystko. Jako "Good Leaver", zazwyczaj zatrzymujesz to, co zvestowałeś. Kalkulator zakłada Good Leaver.</li>
+                        <li><strong>ESOP od Founderów:</strong> To efektywnie zwiększa Twoje rozwodnienie. Zamiast oddać 21%, "oddajecie" jako zespół 28% firmy.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Formatting helper
+        const formatPLN = (num) => {
+            return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN', maximumFractionDigits: 0 }).format(num);
+        };
+
+        const formatPercent = (num) => {
+            return num.toFixed(2) + '%';
+        };
+
+        let myChart = null;
+
+        function syncExitVal(val) {
+            document.getElementById('exitValSlider').value = val;
+            document.getElementById('exitValInput').value = val;
+            calculate();
+        }
+
+        function calculate() {
+            // Inputs
+            const userSharePre = parseFloat(document.getElementById('userSharesPre').value) / 100;
+            const salaryYearly = parseFloat(document.getElementById('salary').value);
+            const invAmount = parseFloat(document.getElementById('invAmount').value);
+            const invPercent = parseFloat(document.getElementById('invPercent').value) / 100;
+            const liqPrefMult = parseFloat(document.getElementById('liqPref').value);
+            const esopPercent = parseFloat(document.getElementById('esopPercent').value) / 100;
+            const exitVal = parseFloat(document.getElementById('exitValInput').value);
+            const monthsWorked = parseFloat(document.getElementById('monthsWorked').value);
+
+            // 1. Valuation & Structure
+            // Post Money Valuation = InvAmount / InvPercent
+            const postMoneyVal = invAmount / invPercent;
+            const preMoneyVal = postMoneyVal - invAmount;
+
+            // 2. Dilution Logic
+            // The pie is now: Investor (21%), ESOP (7%), Founders/Existing (72%)
+            // We assume User had X% of the OLD pie.
+            // Standard approach: User keeps their relative proportion of the Founders' slice.
+            // Founders Slice = 1 - InvPercent - EsopPercent
+            const foundersSlice = 1 - invPercent - esopPercent;
+            
+            // User's new share = Old Share * FoundersSlice (assuming Old Share was % of total pre-money)
+            // Note: If User's 10% was on a cap table that fully converts to the "Founders Slice":
+            const userSharePost = userSharePre * foundersSlice;
+
+            // 3. Vesting Logic
+            // 25% is safe (assumed upfront/initial), 75% vests over 48 months
+            // If months = 0, user has 25%. If months = 48, user has 100% of their equity.
+            // Vesting factor applied to the USER'S EQUITY VALUE, not percentage ownership on cap table (technically shares are repurchased, but money effect is same)
+            const vestingSafe = 0.25;
+            const vestingAtRisk = 0.75;
+            const vestedFraction = vestingSafe + (vestingAtRisk * (monthsWorked / 48));
+            const userEffectiveShare = userSharePost * vestedFraction;
+
+            // 4. Liquidation Preference Logic (Non-Participating assumed as standard for 'Preference' only)
+            // Participating would mean Investor gets Preference + Share. 1.5x Participating is very rare/harsh.
+            // We model standard Non-Participating: Investor takes MAX(Preference Amount, Share % * ExitVal)
+            
+            const prefAmount = invAmount * liqPrefMult;
+            const investorShareValueAsCommon = invPercent * exitVal;
+
+            let investorPayout = 0;
+            let commonPool = 0;
+
+            if (exitVal < prefAmount) {
+                // Not enough money to even pay preference fully
+                investorPayout = exitVal;
+                commonPool = 0;
+            } else {
+                // Enough to pay preference
+                // Investor checks: Do I take Pref Amount OR do I convert to Common?
+                // Standard Non-Participating Logic:
+                if (investorShareValueAsCommon > prefAmount) {
+                    // Investor converts to common
+                    investorPayout = investorShareValueAsCommon;
+                    // In this scenario, everyone is common.
+                    commonPool = exitVal - investorPayout; // This logic is tricky. If converted, simple % applies.
+                    // Simpler logic for conversion:
+                    // If converting, Investor gets InvPercent * ExitVal.
+                    // Everyone else gets their Pro-Rata of ExitVal.
+                } else {
+                    // Investor takes Preference
+                    investorPayout = prefAmount;
+                    commonPool = exitVal - prefAmount;
+                }
+            }
+
+            // 5. User Payoff from Equity
+            // User gets their share of the Common Pool.
+            // User's share of the "Common/Founder Block" is (UserSharePost / FoundersSlice).
+            // But wait, we calculated userSharePost as absolute %.
+            // If Investor takes Preference, the Common Pool is distributed among Common Shareholders (Founders + ESOP).
+            // Total Common % = FoundersSlice + EsopPercent? Or just FoundersSlice?
+            // Usually ESOP is common stock. So Common Pool goes to (Founders + ESOP).
+            // User's share of Common Pool = (UserSharePost) / (1 - InvPercent) ??
+            // No, simpler: 
+            // If Investor converts: User gets UserSharePost * ExitVal.
+            // If Investor takes Pref: User gets (UserSharePost / (1 - InvPercent)) * CommonPool.
+            
+            let userEquityValueRaw = 0;
+            const commonShareholdersTotalPercent = 1 - invPercent; // 79% typically
+
+            if (investorShareValueAsCommon > prefAmount) {
+                // Converted scenario
+                userEquityValueRaw = userSharePost * exitVal;
+            } else {
+                // Preference scenario
+                if (commonPool > 0) {
+                    // Normalize User share relative to remaining shareholders
+                    const relativeShare = userSharePost / commonShareholdersTotalPercent;
+                    userEquityValueRaw = relativeShare * commonPool;
+                } else {
+                    userEquityValueRaw = 0;
+                }
+            }
+
+            // Apply Vesting to the money
+            const userEquityValueFinal = userEquityValueRaw * vestedFraction;
+
+            // 6. Salary Calculation
+            const totalSalary = (salaryYearly / 12) * monthsWorked;
+
+            // 7. Totals
+            const totalPackage = userEquityValueFinal + totalSalary;
+
+            // 8. Updates UI
+            document.getElementById('postMoneyVal').innerText = formatPLN(postMoneyVal);
+            document.getElementById('userDilutedShares').innerText = formatPercent(userSharePost * 100);
+            document.getElementById('dilutionInfo').innerText = `(Z ${userSharePre*100}% na ${formatPercent(userSharePost * 100)})`;
+            document.getElementById('prefHurdle').innerText = formatPLN(prefAmount);
+            document.getElementById('totalUserValue').innerText = formatPLN(totalPackage);
+            
+            document.getElementById('prefNoteMult').innerText = liqPrefMult + 'x';
+            document.getElementById('prefNoteAmt').innerText = formatPLN(prefAmount);
+            
+            document.getElementById('tableEquity').innerText = formatPLN(userEquityValueFinal);
+            document.getElementById('tableSalary').innerText = formatPLN(totalSalary);
+            document.getElementById('tableMonths').innerText = monthsWorked;
+            document.getElementById('tableTotal').innerText = formatPLN(totalPackage);
+
+            // Trap Calculation: When does Investor convert?
+            // When InvPercent * ExitVal > PrefAmount
+            // ExitVal > PrefAmount / InvPercent
+            const conversionPoint = prefAmount / invPercent;
+            document.getElementById('trapVal').innerText = formatPLN(conversionPoint);
+
+            // Chart Update
+            updateChart(investorPayout, userEquityValueFinal, (exitVal - investorPayout - userEquityValueFinal), totalSalary);
+        }
+
+        function updateChart(investor, user, others, salary) {
+            const ctx = document.getElementById('waterfallChart').getContext('2d');
+            
+            // Others cannot be negative
+            if (others < 0) others = 0;
+
+            const data = {
+                labels: ['Inwestor (Equity)', 'Ty (Equity)', 'Reszta (ESOP/Founders)', 'Twoja Pensja (Cash)'],
+                datasets: [{
+                    label: 'Wartość (PLN)',
+                    data: [investor, user, others, salary],
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.7)', // Red for Investor
+                        'rgba(37, 99, 235, 0.7)', // Blue for User
+                        'rgba(156, 163, 175, 0.5)', // Gray for others
+                        'rgba(34, 197, 94, 0.7)'  // Green for Salary
+                    ],
+                    borderColor: [
+                        'rgba(239, 68, 68, 1)',
+                        'rgba(37, 99, 235, 1)',
+                        'rgba(156, 163, 175, 1)',
+                        'rgba(34, 197, 94, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            };
+
+            const config = {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return formatPLN(context.raw);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value / 1000000 + ' mln';
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (myChart) {
+                myChart.destroy();
+            }
+            myChart = new Chart(ctx, config);
+        }
+
+        // Init
+        calculate();
+
+    </script>
+</body>
+</html>
