@@ -1,19 +1,44 @@
 <!DOCTYPE html>
 <html lang="pl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator Term Sheet VC - Advanced + Tax</title>
+    <title>Kalkulator Term Sheet VC - EV & Probabilities</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .slider-thumb::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; background: #3b82f6; border-radius: 50%; cursor: pointer; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .toggle-checkbox:checked { right: 0; border-color: #68D391; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #68D391; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .slider-thumb::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #68D391;
+        }
+
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: #68D391;
+        }
     </style>
 </head>
+
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
@@ -21,18 +46,19 @@
         <header class="mb-8 text-center md:text-left flex flex-col md:flex-row justify-between items-center">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Kalkulator Founder'a PRO</h1>
-                <p class="text-gray-600 mt-2">Equity + B2B/UoP Tax Optimizer + Preference Stack</p>
+                <p class="text-gray-600 mt-2">Equity + Podatki + Ryzyko (EV)</p>
             </div>
-            <div class="mt-4 md:mt-0 bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg text-sm font-semibold border border-indigo-200">
-                v2.0: Moduł Podatkowy
+            <div
+                class="mt-4 md:mt-0 bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg text-sm font-semibold border border-indigo-200">
+                v3.1: Bug Fixes & Stability
             </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
+
             <!-- Lewa Kolumna: Parametry wejściowe (4 cols) -->
             <div class="lg:col-span-4 space-y-6">
-                
+
                 <!-- Sekcja 1: Twoja Pozycja -->
                 <div class="card p-5 border-l-4 border-blue-500">
                     <h2 class="text-lg font-bold text-gray-800 mb-3">1. Ty i Twoja Pensja</h2>
@@ -41,14 +67,18 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-500">Obecne udziały (Pre)</label>
                                 <div class="flex items-center mt-1">
-                                    <input type="number" id="userSharesPre" value="10" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500" oninput="calculate()">
+                                    <input type="number" id="userSharesPre" value="50"
+                                        class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                        oninput="calculate()">
                                     <span class="ml-1 text-gray-500 text-sm">%</span>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-500">Kwota roczna (Faktura/Brutto)</label>
+                                <label class="block text-xs font-medium text-gray-500">Rocznie (Faktura/Brutto)</label>
                                 <div class="flex items-center mt-1">
-                                    <input type="number" id="salary" value="360000" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500" oninput="calculate()">
+                                    <input type="number" id="salary" value="360000"
+                                        class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                        oninput="calculate()">
                                     <span class="ml-1 text-gray-500 text-sm">PLN</span>
                                 </div>
                             </div>
@@ -57,7 +87,9 @@
                         <!-- Contract Type Selector -->
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">Forma współpracy</label>
-                            <select id="contractType" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500" onchange="calculate()">
+                            <select id="contractType"
+                                class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500"
+                                onchange="calculate()">
                                 <option value="b2b_lin">B2B - Podatek Liniowy (19%)</option>
                                 <option value="b2b_ryczalt">B2B - Ryczałt (12% IT/Mgmt)</option>
                                 <option value="uop">Umowa o Pracę (Skala 12/32%)</option>
@@ -74,12 +106,14 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-medium text-gray-500">Inwestycja</label>
-                                <input type="number" id="invAmount" value="8000000" class="w-full p-2 border rounded text-sm mt-1" oninput="calculate()">
+                                <input type="number" id="invAmount" value="8000000"
+                                    class="w-full p-2 border rounded text-sm mt-1" oninput="calculate()">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-500">Udziały (Post)</label>
                                 <div class="flex items-center mt-1">
-                                    <input type="number" id="invPercent" value="20" class="w-full p-2 border rounded text-sm" oninput="calculate()">
+                                    <input type="number" id="invPercent" value="20"
+                                        class="w-full p-2 border rounded text-sm" oninput="calculate()">
                                     <span class="ml-1 text-gray-500 text-sm">%</span>
                                 </div>
                             </div>
@@ -91,7 +125,9 @@
                                 <label class="block text-xs font-medium text-gray-700">Liq. Preference</label>
                                 <span class="text-sm font-bold text-blue-600" id="liqPrefVal">1.5x</span>
                             </div>
-                            <input type="range" id="liqPref" min="1" max="3" step="0.25" value="1.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="document.getElementById('liqPrefVal').innerText = this.value + 'x'; calculate()">
+                            <input type="range" id="liqPref" min="1" max="3" step="0.25" value="1.5"
+                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                oninput="document.getElementById('liqPrefVal').innerText = this.value + 'x'; calculate()">
                         </div>
 
                         <!-- Participating Switch -->
@@ -100,9 +136,13 @@
                                 <label class="block text-sm font-bold text-red-700">Participating?</label>
                                 <p class="text-[10px] text-red-500 leading-tight">Double dipping: kasa + procent.</p>
                             </div>
-                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                <input type="checkbox" name="toggle" id="isParticipating" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300" onclick="calculate()"/>
-                                <label for="toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                            <div
+                                class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="isParticipating"
+                                    class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300"
+                                    onclick="calculate()" />
+                                <label for="toggle"
+                                    class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
                             </div>
                         </div>
 
@@ -110,14 +150,16 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-700">Dywidenda %</label>
                                 <div class="flex items-center mt-1">
-                                    <input type="number" id="dividendRate" value="0" class="w-full p-2 border rounded text-sm" placeholder="0" oninput="calculate()">
+                                    <input type="number" id="dividendRate" value="0"
+                                        class="w-full p-2 border rounded text-sm" placeholder="0" oninput="calculate()">
                                     <span class="ml-1 text-gray-500 text-sm">%</span>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-700">ESOP (Founder pool)</label>
+                                <label class="block text-xs font-medium text-gray-700">ESOP (Founder)</label>
                                 <div class="flex items-center mt-1">
-                                    <input type="number" id="esopPercent" value="10" class="w-full p-2 border rounded text-sm" oninput="calculate()">
+                                    <input type="number" id="esopPercent" value="10"
+                                        class="w-full p-2 border rounded text-sm" oninput="calculate()">
                                     <span class="ml-1 text-gray-500 text-sm">%</span>
                                 </div>
                             </div>
@@ -125,28 +167,47 @@
                     </div>
                 </div>
 
-                <!-- Sekcja 3: Exit & Podatki -->
+                <!-- Sekcja 3: Exit & Prawdopodobieństwo -->
                 <div class="card p-5 border-l-4 border-green-500">
-                    <h2 class="text-lg font-bold text-gray-800 mb-3">3. Scenariusz Wyjścia</h2>
+                    <h2 class="text-lg font-bold text-gray-800 mb-3">3. Wyjście i Prawdopodobieństwo</h2>
                     <div class="space-y-4">
+                        <!-- Valuation -->
                         <div>
                             <label class="block text-xs font-medium text-gray-700">Wycena Exit (Post-Money)</label>
-                            <input type="range" id="exitValSlider" min="5000000" max="150000000" step="1000000" value="50000000" class="w-full mt-2" oninput="syncExitVal(this.value)">
+                            <input type="range" id="exitValSlider" min="5000000" max="150000000" step="1000000"
+                                value="50000000" class="w-full mt-2" oninput="syncExitVal(this.value)">
                             <div class="flex items-center mt-1">
-                                <input type="number" id="exitValInput" value="50000000" class="w-full p-2 border rounded text-sm font-bold text-green-700" oninput="syncExitVal(this.value)">
+                                <input type="number" id="exitValInput" value="50000000"
+                                    class="w-full p-2 border rounded text-sm font-bold text-green-700"
+                                    oninput="syncExitVal(this.value)">
                                 <span class="ml-1 text-gray-500 text-sm">PLN</span>
                             </div>
                         </div>
-                        
+
+                        <!-- Probability Slider -->
+                        <div class="bg-yellow-50 p-3 rounded border border-yellow-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-bold text-yellow-800">Szansa na taki Exit</label>
+                                <span class="text-sm font-bold text-yellow-700" id="probVal">20%</span>
+                            </div>
+                            <input type="range" id="exitProb" min="1" max="100" step="1" value="20"
+                                class="w-full h-2 bg-yellow-200 rounded-lg appearance-none cursor-pointer"
+                                oninput="document.getElementById('probVal').innerText = this.value + '%'; calculate()">
+                            <p class="text-[10px] text-yellow-600 mt-1">Wpływa na obliczenie EV (Wartości Oczekiwanej).
+                            </p>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-medium text-gray-700">Czas (lata)</label>
-                                <input type="number" id="yearsExit" value="4" class="w-full p-2 border rounded text-sm" oninput="calculate()">
+                                <label class="block text-xs font-medium text-gray-700">Miesiąc wyjścia</label>
+                                <input type="number" id="monthsExit" value="48"
+                                    class="w-full p-2 border rounded text-sm" oninput="calculate()">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-700">Podatek Equity</label>
                                 <div class="flex items-center">
-                                    <input type="number" id="taxRate" value="19" class="w-full p-2 border rounded text-sm" oninput="calculate()">
+                                    <input type="number" id="taxRate" value="19"
+                                        class="w-full p-2 border rounded text-sm" oninput="calculate()">
                                     <span class="ml-1 text-gray-500 text-sm">%</span>
                                 </div>
                             </div>
@@ -157,7 +218,7 @@
 
             <!-- Prawa Kolumna: Wyniki (8 cols) -->
             <div class="lg:col-span-8 space-y-6">
-                
+
                 <!-- Top Stats -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="card p-4 text-center">
@@ -165,20 +226,23 @@
                         <p class="text-xl font-black text-blue-600" id="userDilutedShares">-</p>
                         <p class="text-[10px] text-gray-400" id="dilutionInfo">Rozwodnienie</p>
                     </div>
-                    <div class="card p-4 text-center border border-orange-200 bg-orange-50">
-                        <p class="text-xs text-orange-600 uppercase font-bold">Hurdle (Inwestor)</p>
-                        <p class="text-xl font-black text-orange-600" id="prefTotal">-</p>
-                        <p class="text-[10px] text-orange-400">Min. kwota zwrotu</p>
-                    </div>
                     <div class="card p-4 text-center border border-green-200 bg-green-50">
                         <p class="text-xs text-green-600 uppercase font-bold">TOTAL DO RĘKI</p>
                         <p class="text-xl font-black text-green-600" id="userNetTotal">-</p>
                         <p class="text-[10px] text-green-500">Equity Net + Pensja Net</p>
                     </div>
+                    <!-- New EV Card -->
+                    <div class="card p-4 text-center border border-purple-200 bg-purple-50 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 bg-purple-200 text-purple-800 text-[10px] px-2 font-bold">
+                            REALITY CHECK</div>
+                        <p class="text-xs text-purple-700 uppercase font-bold mt-1">Total EV (Ważone)</p>
+                        <p class="text-xl font-black text-purple-700" id="evTotal">-</p>
+                        <p class="text-[10px] text-purple-500">Wartość Oczekiwana</p>
+                    </div>
                     <div class="card p-4 text-center bg-gray-50">
-                        <p class="text-xs text-gray-500 uppercase font-bold">Pensja Netto (4 lata)</p>
+                        <p class="text-xs text-gray-500 uppercase font-bold" id="salaryLabelDisplay">Pensja Netto</p>
                         <p class="text-xl font-black text-gray-800" id="salaryNetTotalDisplay">-</p>
-                        <p class="text-[10px] text-gray-400" id="salaryTypeDisplay">Na rękę</p>
+                        <p class="text-[10px] text-gray-400">Pewna kasa (Risk Free)</p>
                     </div>
                 </div>
 
@@ -186,7 +250,9 @@
                 <div class="card p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-bold text-gray-800">Podział Kwoty Wyjścia (Waterfall)</h3>
-                        <div id="participatingBadge" class="hidden bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-bold uppercase">Participating Active</div>
+                        <div id="participatingBadge"
+                            class="hidden bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-bold uppercase">
+                            Participating Active</div>
                     </div>
                     <div class="relative h-72 w-full">
                         <canvas id="waterfallChart"></canvas>
@@ -221,48 +287,46 @@
                                 <span>Podatek (<span id="taxRateDisplay">19</span>%)</span>
                                 <span id="tblTax">-</span>
                             </div>
-                             <div class="flex justify-between font-bold text-green-600 text-lg border-t pt-2">
+                            <div class="flex justify-between font-bold text-green-600 text-lg border-t pt-2">
                                 <span>Equity Netto</span>
                                 <span id="tblUserNet">-</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Salary & Tax Analysis -->
+                    <!-- Reality Check & EV -->
                     <div class="card p-0 overflow-hidden">
-                        <div class="bg-indigo-50 px-4 py-3 border-b border-indigo-100">
-                            <h3 class="text-sm font-bold text-indigo-800">Analiza Płacowa (4 lata)</h3>
+                        <div class="bg-purple-100 px-4 py-3 border-b border-purple-200">
+                            <h3 class="text-sm font-bold text-purple-900">EV: Reality Check</h3>
                         </div>
-                        <div class="p-4 space-y-3 text-sm">
-                            <div class="flex justify-between">
-                                <span>Suma Faktur/Brutto</span>
-                                <span class="font-bold" id="salaryGross">-</span>
+                        <div class="p-4 space-y-4 text-sm">
+                            <div class="bg-white p-3 rounded border border-purple-100">
+                                <p class="text-xs text-gray-500 mb-1">Matematyczna wartość Twojej decyzji:</p>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span>Szansa sukcesu:</span>
+                                    <span class="font-bold text-yellow-600" id="evProbDisplay">-</span>
+                                </div>
+                                <div class="flex justify-between items-center text-gray-400 text-xs">
+                                    <span>Equity EV:</span>
+                                    <span id="evEquity">-</span>
+                                </div>
+                                <div class="flex justify-between items-center text-gray-400 text-xs border-b pb-2 mb-2">
+                                    <span>Salary (Guaranteed):</span>
+                                    <span id="evSalary">-</span>
+                                </div>
+                                <div class="flex justify-between items-center font-bold text-purple-700 text-lg">
+                                    <span>TOTAL EV:</span>
+                                    <span id="evTotalBox">-</span>
+                                </div>
                             </div>
-                            <div class="flex justify-between text-xs text-gray-500">
-                                <span>Obciążenia (ZUS/Zdrow/PIT)</span>
-                                <span class="text-red-500" id="salaryTaxes">-</span>
-                            </div>
-                            <div class="flex justify-between font-bold text-indigo-700 border-t border-indigo-100 pt-2">
-                                <span>Suma Netto ("Na rękę")</span>
-                                <span id="salaryNet">-</span>
-                            </div>
-                            <div class="mt-4 p-3 bg-white rounded border border-gray-200 text-xs text-gray-600">
-                                <p class="font-bold mb-1">Struktura Equity vs Pensja:</p>
-                                <p>Przy obecnej wycenie wyjścia, Twoja pensja stanowi <strong id="salaryRatio">-</strong> całego Twojego zarobku netto. </p>
-                                <p class="mt-1 text-gray-400 italic" id="salaryComment">...</p>
+
+                            <div class="text-xs text-gray-600">
+                                <p><strong>Interpretacja:</strong> Jeśli EV < Salary Netto, to statystycznie bardziej
+                                        opłaca się brać wyższą pensję i olać udziały (lub negocjować mniejszy
+                                        preference).</p>
+                                        <p class="mt-2 text-gray-400 italic" id="evComment">...</p>
                             </div>
                         </div>
-                    </div>
-                </div>
-                
-                <!-- Alerts -->
-                <div class="bg-yellow-50 border border-yellow-100 p-4 rounded-lg flex items-start space-x-3">
-                    <span class="text-2xl">💡</span>
-                    <div>
-                         <h4 class="text-sm font-bold text-yellow-800">Optymalizacja Podatkowa</h4>
-                         <p class="text-xs text-yellow-700 mt-1">
-                             Zwróć uwagę, jak wybór B2B vs UoP wpływa na wynik końcowy. Przy kwotach rzędu 360k PLN rocznie, różnica w podatkach przez 4 lata może wynieść równowartość małego samochodu (lub sporego pakietu udziałów).
-                         </p>
                     </div>
                 </div>
 
@@ -281,61 +345,49 @@
             calculate();
         }
 
-        // --- Tax Calculation Engine (PL 2024 Approximation) ---
+        // Helper to safely set text content without crashing if element is missing
+        function safeSetText(id, text) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerText = text;
+            } else {
+                console.warn(`Element with id '${id}' not found, skipping update.`);
+            }
+        }
+
         function calculateNetSalary(grossYearly, type) {
             const grossMonthly = grossYearly / 12;
             let netMonthly = 0;
-            let totalTaxMonthly = 0; // ZUS + NFZ + PIT
-
-            // Constants (approx)
-            const ZUS_FULL = 2000; // Simplified Duży ZUS
-            const KUP = 250; // Koszty uzyskania przychodu UoP
+            let totalTaxMonthly = 0;
+            const ZUS_FULL = 2000;
+            const KUP = 250;
 
             if (type === 'uop') {
-                // UoP Logic (Simplified Scale: 12% up to 120k, 32% above)
-                // Social (ZUS pracownik): ~13.71%
                 const social = grossMonthly * 0.1371;
                 const baseHealth = grossMonthly - social;
                 const health = baseHealth * 0.09;
-                
-                // Tax base
                 const taxBaseYearly = (grossMonthly - social - KUP) * 12;
-                
-                // Annual Tax Calc
                 let annualTax = 0;
                 if (taxBaseYearly <= 120000) {
-                    annualTax = (taxBaseYearly * 0.12) - 3600; // minus kwota wolna
+                    annualTax = (taxBaseYearly * 0.12) - 3600;
                 } else {
                     annualTax = (120000 * 0.12) + ((taxBaseYearly - 120000) * 0.32) - 3600;
                 }
                 const monthlyTax = Math.max(0, annualTax / 12);
-                
                 netMonthly = grossMonthly - social - health - monthlyTax;
                 totalTaxMonthly = social + health + monthlyTax;
 
             } else if (type === 'b2b_lin') {
-                // B2B Liniowy (19%)
-                // Odliczamy ZUS od dochodu
                 const income = grossMonthly - ZUS_FULL;
-                // Zdrowotna 4.9% od dochodu
                 const health = income * 0.049;
-                // Podatek 19% od dochodu (zdrowotna nieodliczalna od podatku w liniowym w prostym modelu, ale odliczalna od dochodu do limitu... upraszczamy: full tax base)
-                // Uproszczenie: Podatek = Dochód * 19% (pomijamy limit odliczenia zdrowotnej dla czytelności, bo jest niski)
                 const tax = income * 0.19;
-                
                 netMonthly = grossMonthly - ZUS_FULL - health - tax;
                 totalTaxMonthly = ZUS_FULL + health + tax;
 
             } else if (type === 'b2b_ryczalt') {
-                // B2B Ryczałt (12%)
-                // Zdrowotna ryczałtowa (zakładamy 3 próg przychodowy > 300k rocznie) -> ok 1250 PLN (w 2024 to ok 1100-1200 zależnie od przeciętnego)
-                // Let's assume ~1100 PLN fixed health.
                 const HEALTH_FIXED = 1100;
-                
-                // Tax Base: Przychód - ZUS
-                const taxBase = grossMonthly - ZUS_FULL; // Na ryczałcie odliczamy ZUS społeczny od przychodu
+                const taxBase = grossMonthly - ZUS_FULL;
                 const tax = taxBase * 0.12;
-                
                 netMonthly = grossMonthly - ZUS_FULL - HEALTH_FIXED - tax;
                 totalTaxMonthly = ZUS_FULL + HEALTH_FIXED + tax;
             }
@@ -347,40 +399,50 @@
         }
 
         function calculate() {
-            // Inputs
-            const userSharesPre = parseFloat(document.getElementById('userSharesPre').value) / 100;
-            const salaryYearly = parseFloat(document.getElementById('salary').value);
-            const contractType = document.getElementById('contractType').value;
-            
-            const invAmount = parseFloat(document.getElementById('invAmount').value);
-            const invPercent = parseFloat(document.getElementById('invPercent').value) / 100;
-            const liqPrefMult = parseFloat(document.getElementById('liqPref').value);
-            const esopPercent = parseFloat(document.getElementById('esopPercent').value) / 100;
-            const exitVal = parseFloat(document.getElementById('exitValInput').value);
-            const years = parseFloat(document.getElementById('yearsExit').value);
-            const taxRate = parseFloat(document.getElementById('taxRate').value) / 100;
-            
-            const isParticipating = document.getElementById('isParticipating').checked;
-            const dividendRate = parseFloat(document.getElementById('dividendRate').value || 0) / 100;
+            // Inputs (using safe fallbacks)
+            const getVal = (id) => {
+                const el = document.getElementById(id);
+                return el ? parseFloat(el.value) : 0;
+            };
 
-            // UI Description Update
+            const userSharesPre = getVal('userSharesPre') / 100;
+            const salaryYearly = getVal('salary');
+
+            const contractTypeEl = document.getElementById('contractType');
+            const contractType = contractTypeEl ? contractTypeEl.value : 'b2b_lin';
+
+            const invAmount = getVal('invAmount');
+            const invPercent = getVal('invPercent') / 100;
+            const liqPrefMult = getVal('liqPref');
+            const esopPercent = getVal('esopPercent') / 100;
+            const exitVal = getVal('exitValInput');
+            const months = getVal('monthsExit');
+            const years = months / 12;
+            const taxRate = getVal('taxRate') / 100;
+            const exitProb = getVal('exitProb') / 100;
+
+            const isParticipatingEl = document.getElementById('isParticipating');
+            const isParticipating = isParticipatingEl ? isParticipatingEl.checked : false;
+
+            const dividendRate = getVal('dividendRate') / 100;
+
             const descMap = {
                 'uop': 'Wysoki ZUS, Progi 12%/32%. Bezpieczeństwo, ale wysoki koszt.',
                 'b2b_lin': 'Stałe 19% + ZUS + 4.9% Zdrowotna. Dobre przy bardzo wysokich dochodach.',
                 'b2b_ryczalt': 'Niski podatek 12% od przychodu. Brak kosztów, stała składka zdrowotna.'
             };
-            document.getElementById('taxDesc').innerText = descMap[contractType];
+            safeSetText('taxDesc', descMap[contractType]);
 
-            // --- 1. Structure & Dilution ---
+            // 1. Structure
             const foundersSlice = 1 - invPercent - esopPercent;
             const userSharesPost = userSharesPre * foundersSlice;
 
-            // --- 2. Preference Stack ---
+            // 2. Preference
             const basePref = invAmount * liqPrefMult;
             const totalDividends = invAmount * dividendRate * years;
             const totalPrefStack = basePref + totalDividends;
 
-            // --- 3. Waterfall Logic ---
+            // 3. Waterfall
             let investorPayout = 0;
             let userEquityPayout = 0;
             let commonPool = 0;
@@ -410,10 +472,9 @@
                 }
             }
 
-            // User Equity Payout
             if (commonPool > 0) {
                 if (isParticipating) {
-                     userEquityPayout = commonPool * userSharesPost; 
+                    userEquityPayout = commonPool * userSharesPost;
                 } else {
                     const conversionValue = exitVal * invPercent;
                     if (conversionValue > totalPrefStack) {
@@ -427,53 +488,60 @@
                 userEquityPayout = 0;
             }
 
-            // --- 4. Taxes & Salary (NEW MODULE) ---
-            // Equity
+            // 4. Taxes & Salary
             const userEquityTax = userEquityPayout * taxRate;
             const userEquityNet = userEquityPayout - userEquityTax;
 
-            // Salary
             const salaryData = calculateNetSalary(salaryYearly, contractType);
             const totalSalaryNet = salaryData.netYearly * years;
             const totalSalaryTax = salaryData.taxYearly * years;
-            const totalSalaryGross = salaryYearly * years;
 
             // Totals
             const totalUserNet = userEquityNet + totalSalaryNet;
 
-            // --- 5. Update UI ---
-            document.getElementById('userDilutedShares').innerText = formatPercent(userSharesPost * 100);
-            document.getElementById('dilutionInfo').innerText = `Z ${userSharesPre*100}% na ${formatPercent(userSharesPost*100)}`;
-            document.getElementById('prefTotal').innerText = formatPLN(totalPrefStack);
-            document.getElementById('userNetTotal').innerText = formatPLN(totalUserNet);
-            
-            document.getElementById('salaryNetTotalDisplay').innerText = formatPLN(totalSalaryNet);
-            document.getElementById('salaryTypeDisplay').innerText = `Przez ${years} lat (${contractType.toUpperCase().replace('_',' ')})`;
-            
-            // Table 1: Equity
-            document.getElementById('tblExit').innerText = formatPLN(exitVal);
-            document.getElementById('tblPref').innerText = "-" + formatPLN(totalPrefStack);
-            document.getElementById('tblCommon').innerText = formatPLN(commonPool);
-            document.getElementById('tblUserGross').innerText = formatPLN(userEquityPayout);
-            document.getElementById('tblTax').innerText = "-" + formatPLN(userEquityTax);
-            document.getElementById('tblUserNet').innerText = formatPLN(userEquityNet);
+            // 5. EV Calculation
+            const evEquity = userEquityNet * exitProb;
+            const evTotal = evEquity + totalSalaryNet;
 
-            // Table 2: Salary
-            document.getElementById('salaryGross').innerText = formatPLN(totalSalaryGross);
-            document.getElementById('salaryTaxes').innerText = "-" + formatPLN(totalSalaryTax);
-            document.getElementById('salaryNet').innerText = formatPLN(totalSalaryNet);
 
-            // Ratio Analysis
-            const ratio = (totalSalaryNet / totalUserNet) * 100;
-            document.getElementById('salaryRatio').innerText = ratio.toFixed(1) + "%";
-            
-            const commentEl = document.getElementById('salaryComment');
-            if (ratio > 80) commentEl.innerText = "Twoje udziały są warte grosze w porównaniu do pensji. Jesteś de facto pracownikiem, a nie wspólnikiem.";
-            else if (ratio > 50) commentEl.innerText = "Pensja to wciąż główny składnik majątku. Exit to miły bonus, ale nie 'life changing money'.";
-            else if (ratio < 20) commentEl.innerText = "To jest scenariusz 'Home Run'. Pensja jest tylko na waciki, liczy się Equity.";
-            else commentEl.innerText = "Zdrowy balans. Pensja daje stabilizację, a Equity potencjał wzrostu.";
+            // Update UI (using safeSetText)
+            safeSetText('userDilutedShares', formatPercent(userSharesPost * 100));
+            safeSetText('dilutionInfo', `Z ${userSharesPre * 100}% na ${formatPercent(userSharesPost * 100)}`);
+            safeSetText('userNetTotal', formatPLN(totalUserNet));
 
-            document.getElementById('participatingBadge').classList.toggle('hidden', !isParticipating);
+            safeSetText('salaryNetTotalDisplay', formatPLN(totalSalaryNet));
+            safeSetText('salaryTypeDisplay', `Przez ${months} mies. (${contractType.toUpperCase().replace('_', ' ')})`);
+            safeSetText('salaryLabelDisplay', `Pensja Netto (${months} mies.)`);
+
+            // EV UI
+            safeSetText('evTotal', formatPLN(evTotal));
+            safeSetText('evProbDisplay', (exitProb * 100).toFixed(0) + '%');
+            safeSetText('evEquity', formatPLN(evEquity));
+            safeSetText('evSalary', formatPLN(totalSalaryNet));
+            safeSetText('evTotalBox', formatPLN(evTotal));
+
+            const evCommentEl = document.getElementById('evComment');
+            if (evCommentEl) {
+                if (evEquity < totalSalaryNet * 0.2) {
+                    evCommentEl.innerText = "Ryzyko jest zbyt duże w stosunku do nagrody. Grasz w lotto, a nie inwestujesz.";
+                } else if (evEquity > totalSalaryNet) {
+                    evCommentEl.innerText = "Gra warta świeczki. EV z udziałów przebija pensję.";
+                } else {
+                    evCommentEl.innerText = "Solidny zakład. Wartość udziałów waży tyle, co Twoja praca.";
+                }
+            }
+
+            // Table 1
+            safeSetText('tblExit', formatPLN(exitVal));
+            safeSetText('tblPref', "-" + formatPLN(totalPrefStack));
+            safeSetText('tblCommon', formatPLN(commonPool));
+            safeSetText('tblUserGross', formatPLN(userEquityPayout));
+            safeSetText('tblTax', "-" + formatPLN(userEquityTax));
+            safeSetText('tblUserNet', formatPLN(userEquityNet));
+            safeSetText('taxRateDisplay', (taxRate * 100).toFixed(0));
+
+            const badge = document.getElementById('participatingBadge');
+            if (badge) badge.classList.toggle('hidden', !isParticipating);
 
             // Chart
             const othersPayout = exitVal - investorPayout - userEquityPayout;
@@ -481,18 +549,20 @@
         }
 
         function updateChart(investor, userEquity, equityTax, others, salaryNet) {
-            const ctx = document.getElementById('waterfallChart').getContext('2d');
-            
+            const ctxEl = document.getElementById('waterfallChart');
+            if (!ctxEl) return;
+            const ctx = ctxEl.getContext('2d');
+
             const data = {
                 labels: ['Inwestor', 'Equity Netto (Ty)', 'Pensja Netto (Ty)', 'Podatki (Ty)', 'Reszta (ESOP/Fnd)'],
                 datasets: [{
                     label: 'Wartość (PLN)',
                     data: [investor, userEquity, salaryNet, equityTax, others],
                     backgroundColor: [
-                        '#DC2626', // Inwestor (Czerwony)
-                        '#16A34A', // Equity Net (Zielony)
-                        '#4F46E5', // Pensja Net (Indygo)
-                        '#9CA3AF', // Podatki (Szary)
+                        '#DC2626', // Inwestor
+                        '#16A34A', // Equity Net
+                        '#4F46E5', // Pensja Net
+                        '#9CA3AF', // Podatki
                         '#BFDBFE'  // Reszta
                     ],
                     borderWidth: 1,
@@ -503,7 +573,7 @@
             if (myChart) {
                 myChart.destroy();
             }
-            
+
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: data,
@@ -514,7 +584,7 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     return formatPLN(context.raw);
                                 }
                             }
@@ -527,8 +597,7 @@
                                 color: '#f3f4f6'
                             },
                             ticks: {
-                                callback: function(value) {
-                                    // Skrócony format dla osi Y (np. 1 mln)
+                                callback: function (value) {
                                     if (value >= 1000000) return (value / 1000000).toFixed(1) + ' mln';
                                     if (value >= 1000) return (value / 1000).toFixed(0) + ' k';
                                     return value;
@@ -536,9 +605,7 @@
                             }
                         },
                         x: {
-                            grid: {
-                                display: false
-                            }
+                            grid: { display: false }
                         }
                     }
                 }
@@ -548,4 +615,5 @@
         calculate();
     </script>
 </body>
+
 </html>
