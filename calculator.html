@@ -7,6 +7,7 @@
     <title>Kalkulator Term Sheet VC - EV & Probabilities</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -48,9 +49,28 @@
                 <h1 class="text-3xl font-bold text-gray-900">Kalkulator Founder'a PRO</h1>
                 <p class="text-gray-600 mt-2">Equity + Podatki + Ryzyko (EV)</p>
             </div>
-            <div
-                class="mt-4 md:mt-0 bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg text-sm font-semibold border border-indigo-200">
-                v3.1: Bug Fixes & Stability
+            <div class="flex flex-wrap justify-center md:justify-end items-center gap-2 mt-4 md:mt-0">
+                <button onclick="exportData('csv')"
+                    class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    CSV
+                </button>
+                <button onclick="exportData('xlsx')"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                    XLSX
+                </button>
+                <div
+                    class="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg text-sm font-semibold border border-indigo-200">
+                    v3.2: Export
+                </div>
             </div>
         </header>
 
@@ -396,6 +416,77 @@
                 netYearly: netMonthly * 12,
                 taxYearly: totalTaxMonthly * 12
             };
+        }
+
+        function exportData(format) {
+            const getVal = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return 0;
+                if (el.type === 'checkbox') return el.checked;
+                return parseFloat(el.value) || 0;
+            };
+
+            const filename = `kalkulator_founder_${new Date().toISOString().split('T')[0]}`;
+
+            // We use static values for inputs and formulas for results
+            const data = [
+                ["KATEGORIA", "PARAMETR", "WARTOŚĆ", "JEDNOSTKA", "OPIS"],
+                ["Wejście", "Obecne udziały (Pre)", getVal('userSharesPre') / 100, "%", "Udziały przed rundą"],
+                ["Wejście", "Roczna pensja (Brutto)", getVal('salary'), "PLN", "Roczny koszt pracodawcy / faktura"],
+                ["Wejście", "Forma współpracy", document.getElementById('contractType').value, "", ""],
+                ["Inwestycja", "Kwota inwestycji", getVal('invAmount'), "PLN", "Kapitał wpłacony przez VC"],
+                ["Inwestycja", "Udziały Inwestora (Post)", getVal('invPercent') / 100, "%", "Procent spółki objęty przez VC"],
+                ["Inwestycja", "Liquidation Preference", getVal('liqPref'), "x", "Mnożnik preferencji likwidacyjnej"],
+                ["Inwestycja", "Participating", getVal('isParticipating'), "BOOL", "Czy inwestor uczestniczy w podziale Common Pool"],
+                ["Inwestycja", "Dywidenda", getVal('dividendRate') / 100, "%", "Roczna skumulowana dywidenda"],
+                ["Inwestycja", "ESOP", getVal('esopPercent') / 100, "%", "Pula esop po rundzie"],
+                ["Wyjście", "Wycena Exit (Post-Money)", getVal('exitValInput'), "PLN", "Wycena przy wyjściu"],
+                ["Wyjście", "Prawdopodobieństwo sukcesu", getVal('exitProb') / 100, "%", "Szansa na realizację scenariusza"],
+                ["Wyjście", "Miesiące do wyjścia", getVal('monthsExit'), "msc", "Horyzont czasowy"],
+                ["Wyjście", "Podatek od sprzedaży udziałów", getVal('taxRate') / 100, "%", ""],
+                ["---", "---", "---", "---", "---"],
+                ["WYNIKI (FORMUŁY)", "Founders Slice", { f: "1-C6-C10" }, "%", "Pozostałe udziały dla założycieli"],
+                ["WYNIKI (FORMUŁY)", "Twoje udziały (Post-money)", { f: "C2*C16" }, "%", "Twój końcowy % w spółce"],
+                ["WYNIKI (FORMUŁY)", "Preference Stack", { f: "C5*C7 + C5*C9*(C13/12)" }, "PLN", "Kwota należna inwestorowi przed common pool"],
+                ["WYNIKI (FORMUŁY)", "Wypłata Inwestora", { f: "IF(C8, IF(C11<=C18, C11, C18 + (C11-C18)*C6), IF(C11*C6 > C18, C11*C6, MIN(C11, C18)))" }, "PLN", "Całkowita kwota dla VC"],
+                ["WYNIKI (FORMUŁY)", "Common Pool", { f: "C11-C19" }, "PLN", "Kwota pozostała do podziału"],
+                ["WYNIKI (FORMUŁY)", "Twój udział (Gross)", { f: "IF(C8, C20*C17, IF(C11*C6 > C18, C11*C17, C20 * (C17 / (1-C6))))" }, "PLN", "Twoja kwota przed podatkiem"],
+                ["WYNIKI (FORMUŁY)", "Podatek od Equity", { f: "C21*C14" }, "PLN", ""],
+                ["WYNIKI (FORMUŁY)", "Equity Netto", { f: "C21-C22" }, "PLN", "Twoja kasa na rękę ze sprzedaży"],
+                ["WYNIKI (FORMUŁY)", "Pensja Netto (Suma)", parseFloat(document.getElementById('salaryNetTotalDisplay').innerText.replace(/[^0-9]/g, '')), "PLN", "Zależne od formy opodatkowania"],
+                ["WYNIKI (FORMUŁY)", "TOTAL DO RĘKI", { f: "C23+C24" }, "PLN", "Suma pensji i equity (Netto)"],
+                ["WYNIKI (FORMUŁY)", "TOTAL EV (Ważone)", { f: "C23*C12 + C24" }, "PLN", "Wartość oczekiwana"]
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+
+            // Set formats
+            const fmtPercent = "0.00%";
+            const fmtCurrency = "#,##0\" PLN\"";
+
+            // Apply formatting to specific cells if it's XLSX
+            if (format === 'xlsx') {
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                    const cellUnit = ws[XLSX.utils.encode_cell({ r: R, c: 3 })];
+                    const cellVal = ws[XLSX.utils.encode_cell({ r: R, c: 2 })];
+                    if (cellVal && cellUnit) {
+                        if (cellUnit.v === '%') cellVal.z = fmtPercent;
+                        if (cellUnit.v === 'PLN') cellVal.z = fmtCurrency;
+                    }
+                }
+                // Set column widths
+                ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 20 }, { wch: 10 }, { wch: 40 }];
+            }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Kalkulacja");
+
+            if (format === 'csv') {
+                XLSX.writeFile(wb, `${filename}.csv`, { bookType: 'csv', FS: ';' });
+            } else {
+                XLSX.writeFile(wb, `${filename}.xlsx`);
+            }
         }
 
         function calculate() {
