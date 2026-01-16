@@ -601,6 +601,13 @@
                         <input type="range" id="i-sdf-res" min="32" max="512" step="32" value="64"
                             oninput="document.getElementById('v-sdf-res').innerText = this.value">
                     </div>
+                    <div class="control-group" style="margin-bottom:8px">
+                        <div class="label-row"><span>MESH ALGORITHM</span></div>
+                        <select id="s-mesh-algo">
+                            <option value="MC">MARCHING CUBES</option>
+                            <option value="DC">DUAL CONTOURING</option>
+                        </select>
+                    </div>
                     <div class="btn-group">
                         <button class="btn-tech" id="btn-bake-mesh" disabled
                             onclick="window.run(window.bakeSdfMesh)">BAKE MESH</button>
@@ -1587,10 +1594,170 @@
             return new Float32Array(vertices);
         }
 
+        // Dual Contouring algorithm - produces better quality meshes
+        function dualContouring(sdf, resolution, bounds, isoLevel = 0) {
+            const vertices = [];
+            const indices = [];
+            const stepX = (bounds.max.x - bounds.min.x) / (resolution - 1);
+            const stepY = (bounds.max.y - bounds.min.y) / (resolution - 1);
+            const stepZ = (bounds.max.z - bounds.min.z) / (resolution - 1);
+
+            function getVal(x, y, z) {
+                if (x < 0 || y < 0 || z < 0 || x >= resolution || y >= resolution || z >= resolution) return 1;
+                return sdf[x + y * resolution + z * resolution * resolution];
+            }
+
+            // Map from cell coords to vertex index
+            const cellVertices = new Map();
+
+            function cellKey(x, y, z) { return `${x},${y},${z}`; }
+
+            // First pass: find cells with sign changes and compute vertex positions
+            for (let z = 0; z < resolution - 1; z++) {
+                for (let y = 0; y < resolution - 1; y++) {
+                    for (let x = 0; x < resolution - 1; x++) {
+                        // Get 8 corner values
+                        const v = [
+                            getVal(x, y, z), getVal(x + 1, y, z), getVal(x + 1, y, z + 1), getVal(x, y, z + 1),
+                            getVal(x, y + 1, z), getVal(x + 1, y + 1, z), getVal(x + 1, y + 1, z + 1), getVal(x, y + 1, z + 1)
+                        ];
+
+                        // Check for sign change
+                        let hasSignChange = false;
+                        const sign0 = v[0] < isoLevel;
+                        for (let i = 1; i < 8; i++) {
+                            if ((v[i] < isoLevel) !== sign0) { hasSignChange = true; break; }
+                        }
+                        if (!hasSignChange) continue;
+
+                        // Find edge intersections
+                        const edgePoints = [];
+
+                        // 12 edges: pairs of corner indices
+                        const edgePairs = [
+                            [0, 1], [1, 2], [2, 3], [3, 0],  // bottom face
+                            [4, 5], [5, 6], [6, 7], [7, 4],  // top face
+                            [0, 4], [1, 5], [2, 6], [3, 7]   // vertical edges
+                        ];
+                        // Corner offsets
+                        const corners = [
+                            [0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1],
+                            [0, 1, 0], [1, 1, 0], [1, 1, 1], [0, 1, 1]
+                        ];
+
+                        for (const [i0, i1] of edgePairs) {
+                            if ((v[i0] < isoLevel) !== (v[i1] < isoLevel)) {
+                                const t = (isoLevel - v[i0]) / (v[i1] - v[i0] + 0.0001);
+                                const c0 = corners[i0], c1 = corners[i1];
+                                const px = bounds.min.x + (x + c0[0] + t * (c1[0] - c0[0])) * stepX;
+                                const py = bounds.min.y + (y + c0[1] + t * (c1[1] - c0[1])) * stepY;
+                                const pz = bounds.min.z + (z + c0[2] + t * (c1[2] - c0[2])) * stepZ;
+                                edgePoints.push([px, py, pz]);
+                            }
+                        }
+
+                        if (edgePoints.length === 0) continue;
+
+                        // Vertex position: average of edge intersections
+                        let cx = 0, cy = 0, cz = 0;
+                        for (const p of edgePoints) { cx += p[0]; cy += p[1]; cz += p[2]; }
+                        cx /= edgePoints.length; cy /= edgePoints.length; cz /= edgePoints.length;
+
+                        const vertIdx = vertices.length / 3;
+                        vertices.push(cx, cy, cz);
+                        cellVertices.set(cellKey(x, y, z), vertIdx);
+                    }
+                }
+            }
+
+            // Second pass: generate quads for each edge with sign change
+            // For each internal edge, connect the 4 cells that share it
+
+            // X-aligned edges (at grid positions, shared by 4 cells in Y-Z plane)
+            for (let z = 0; z < resolution - 2; z++) {
+                for (let y = 0; y < resolution - 2; y++) {
+                    for (let x = 0; x < resolution - 1; x++) {
+                        const v0 = getVal(x, y + 1, z + 1);
+                        const v1 = getVal(x + 1, y + 1, z + 1);
+                        if ((v0 < isoLevel) !== (v1 < isoLevel)) {
+                            // 4 cells sharing this edge
+                            const c0 = cellVertices.get(cellKey(x, y, z));
+                            const c1 = cellVertices.get(cellKey(x, y + 1, z));
+                            const c2 = cellVertices.get(cellKey(x, y + 1, z + 1));
+                            const c3 = cellVertices.get(cellKey(x, y, z + 1));
+                            if (c0 !== undefined && c1 !== undefined && c2 !== undefined && c3 !== undefined) {
+                                if (v0 < isoLevel) {
+                                    indices.push(c0, c1, c2, c0, c2, c3);
+                                } else {
+                                    indices.push(c0, c2, c1, c0, c3, c2);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Y-aligned edges (shared by 4 cells in X-Z plane)
+            for (let z = 0; z < resolution - 2; z++) {
+                for (let y = 0; y < resolution - 1; y++) {
+                    for (let x = 0; x < resolution - 2; x++) {
+                        const v0 = getVal(x + 1, y, z + 1);
+                        const v1 = getVal(x + 1, y + 1, z + 1);
+                        if ((v0 < isoLevel) !== (v1 < isoLevel)) {
+                            const c0 = cellVertices.get(cellKey(x, y, z));
+                            const c1 = cellVertices.get(cellKey(x + 1, y, z));
+                            const c2 = cellVertices.get(cellKey(x + 1, y, z + 1));
+                            const c3 = cellVertices.get(cellKey(x, y, z + 1));
+                            if (c0 !== undefined && c1 !== undefined && c2 !== undefined && c3 !== undefined) {
+                                if (v0 < isoLevel) {
+                                    indices.push(c0, c2, c1, c0, c3, c2);
+                                } else {
+                                    indices.push(c0, c1, c2, c0, c2, c3);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Z-aligned edges (shared by 4 cells in X-Y plane)
+            for (let z = 0; z < resolution - 1; z++) {
+                for (let y = 0; y < resolution - 2; y++) {
+                    for (let x = 0; x < resolution - 2; x++) {
+                        const v0 = getVal(x + 1, y + 1, z);
+                        const v1 = getVal(x + 1, y + 1, z + 1);
+                        if ((v0 < isoLevel) !== (v1 < isoLevel)) {
+                            const c0 = cellVertices.get(cellKey(x, y, z));
+                            const c1 = cellVertices.get(cellKey(x + 1, y, z));
+                            const c2 = cellVertices.get(cellKey(x + 1, y + 1, z));
+                            const c3 = cellVertices.get(cellKey(x, y + 1, z));
+                            if (c0 !== undefined && c1 !== undefined && c2 !== undefined && c3 !== undefined) {
+                                if (v0 < isoLevel) {
+                                    indices.push(c0, c1, c2, c0, c2, c3);
+                                } else {
+                                    indices.push(c0, c2, c1, c0, c3, c2);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Convert indexed mesh to flat triangle array
+            const result = [];
+            for (let i = 0; i < indices.length; i++) {
+                const idx = indices[i] * 3;
+                result.push(vertices[idx], vertices[idx + 1], vertices[idx + 2]);
+            }
+
+            return new Float32Array(result);
+        }
+
         window.bakeSdfMesh = async function () {
             if (state.segments.length === 0) return;
 
             const resolution = parseInt(document.getElementById('i-sdf-res').value);
+            const algorithm = document.getElementById('s-mesh-algo').value;
             const radiusScale = parseFloat(document.getElementById('i-vesselradius').value);
 
             // Calculate bounds with padding
@@ -1619,10 +1786,12 @@
 
             const { sdf } = generateSdfGrid(state.segments, resolution, radiusScale, bounds);
 
-            console.log('Running marching cubes...');
+            console.log(`Running ${algorithm === 'DC' ? 'Dual Contouring' : 'Marching Cubes'}...`);
             await new Promise(r => setTimeout(r, 50));
 
-            const verts = marchingCubes(sdf, resolution, bounds, 0);
+            const verts = algorithm === 'DC'
+                ? dualContouring(sdf, resolution, bounds, 0)
+                : marchingCubes(sdf, resolution, bounds, 0);
 
             if (verts.length === 0) {
                 console.warn('No mesh generated - check SDF');
