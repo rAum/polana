@@ -37,6 +37,69 @@
         .toggle-checkbox:checked+.toggle-label {
             background-color: #68D391;
         }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: help;
+            margin-left: 4px;
+            color: #9ca3af;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 240px;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: left;
+            border-radius: 8px;
+            padding: 12px;
+            position: absolute;
+            z-index: 50;
+            bottom: 150%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: all 0.2s ease-in-out;
+            font-size: 11px;
+            line-height: 1.4;
+            font-weight: normal;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+            bottom: 125%;
+        }
+
+        @media (max-width: 640px) {
+            .tooltip .tooltiptext {
+                width: 180px;
+                left: auto;
+                right: -20px;
+                transform: none;
+            }
+
+            .tooltip .tooltiptext::after {
+                left: auto;
+                right: 25px;
+            }
+        }
     </style>
 </head>
 
@@ -85,7 +148,17 @@
                     <div class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-medium text-gray-500">Obecne udziały (Pre)</label>
+                                <label class="block text-xs font-medium text-gray-500">
+                                    Obecne udziały (Pre)
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Twój procentowy udział w kapitale spółki przed
+                                            wejściem obecnego inwestora lub przed nową rundą.</span>
+                                    </span>
+                                </label>
                                 <div class="flex items-center mt-1">
                                     <input type="number" id="userSharesPre" value="50"
                                         class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500"
@@ -94,7 +167,17 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-500">Rocznie (Faktura/Brutto)</label>
+                                <label class="block text-xs font-medium text-gray-500">
+                                    Rocznie (Faktura/Brutto)
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Całkowity koszt pracodawcy (UoP) lub kwota netto na
+                                            fakturze (B2B). To Twoja "pewna" kasa.</span>
+                                    </span>
+                                </label>
                                 <div class="flex items-center mt-1">
                                     <input type="number" id="salary" value="360000"
                                         class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500"
@@ -116,6 +199,15 @@
                             </select>
                             <p class="text-[10px] text-gray-400 mt-1" id="taxDesc">ZUS, składka zdrowotna i PIT 19%.</p>
                         </div>
+                        <div id="salaryWarning"
+                            class="hidden mt-2 p-3 bg-red-50 text-red-700 text-[11px] rounded-lg border border-red-100 flex items-start gap-2">
+                            <span class="text-base">⚠️</span>
+                            <div>
+                                <p class="font-bold">Generujesz dług!</p>
+                                <p>Pensja nie pokrywa kosztów stałych (ZUS, składka zdrowotna). Musisz dopłacać do
+                                    biznesu.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -125,12 +217,32 @@
                     <div class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-medium text-gray-500">Inwestycja</label>
+                                <label class="block text-xs font-medium text-gray-500">
+                                    Inwestycja
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Kwota gotówki, którą inwestor wpłaca do spółki w
+                                            zamian za nowe udziały.</span>
+                                    </span>
+                                </label>
                                 <input type="number" id="invAmount" value="8000000"
                                     class="w-full p-2 border rounded text-sm mt-1" oninput="calculate()">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-500">Udziały (Post)</label>
+                                <label class="block text-xs font-medium text-gray-500">
+                                    Udziały (Post)
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Procent akcji, który Inwestor obejmuje w spółce PO
+                                            wpłaceniu pieniędzy (Post-money).</span>
+                                    </span>
+                                </label>
                                 <div class="flex items-center mt-1">
                                     <input type="number" id="invPercent" value="20"
                                         class="w-full p-2 border rounded text-sm" oninput="calculate()">
@@ -142,7 +254,18 @@
                         <!-- Liquidation Preference -->
                         <div>
                             <div class="flex justify-between items-center mb-1">
-                                <label class="block text-xs font-medium text-gray-700">Liq. Preference</label>
+                                <label class="block text-xs font-medium text-gray-700">
+                                    Liq. Preference
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Gwarancja dla inwestora, że przy wyjściu odzyska
+                                            X-krotność inwestycji przed wypłatą dla Ciebie. 1x to standard
+                                            rynkowy.</span>
+                                    </span>
+                                </label>
                                 <span class="text-sm font-bold text-blue-600" id="liqPrefVal">1.5x</span>
                             </div>
                             <input type="range" id="liqPref" min="1" max="3" step="0.25" value="1.5"
@@ -153,7 +276,19 @@
                         <!-- Participating Switch -->
                         <div class="flex items-center justify-between bg-red-50 p-3 rounded-lg border border-red-100">
                             <div>
-                                <label class="block text-sm font-bold text-red-700">Participating?</label>
+                                <label class="block text-sm font-bold text-red-700">
+                                    Participating?
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3 text-red-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">"Double dipping". Inwestor najpierw bierze swoją
+                                            preferencję (np. 1x), a potem DODATKOWO dzieli się resztą puli
+                                            proporcjonalnie do udziałów. Bardzo niekorzystne dla foundera.</span>
+                                    </span>
+                                </label>
                                 <p class="text-[10px] text-red-500 leading-tight">Double dipping: kasa + procent.</p>
                             </div>
                             <div
@@ -168,7 +303,17 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-medium text-gray-700">Dywidenda %</label>
+                                <label class="block text-xs font-medium text-gray-700">
+                                    Dywidenda %
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Roczna skumulowana dywidenda (accrued dividend).
+                                            Zwiększa Preface Stack inwestora o % rocznie od wkładu.</span>
+                                    </span>
+                                </label>
                                 <div class="flex items-center mt-1">
                                     <input type="number" id="dividendRate" value="0"
                                         class="w-full p-2 border rounded text-sm" placeholder="0" oninput="calculate()">
@@ -176,7 +321,18 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-700">ESOP (Founder)</label>
+                                <label class="block text-xs font-medium text-gray-700">
+                                    ESOP (Founder)
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Pula udziałów dla pracowników (Option Pool), która
+                                            powstaje podczas rundy i rozwadnia założycieli (tzw. Option Pool
+                                            Shuffle).</span>
+                                    </span>
+                                </label>
                                 <div class="flex items-center mt-1">
                                     <input type="number" id="esopPercent" value="0"
                                         class="w-full p-2 border rounded text-sm" oninput="calculate()">
@@ -193,7 +349,17 @@
                     <div class="space-y-4">
                         <!-- Valuation -->
                         <div>
-                            <label class="block text-xs font-medium text-gray-700">Wycena Exit (Post-Money)</label>
+                            <label class="block text-xs font-medium text-gray-700">
+                                Wycena Exit (Post-Money)
+                                <span class="tooltip">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span class="tooltiptext">Twoja hipoteza: za ile sprzedasz spółkę. To od tej kwoty
+                                        liczony jest cały waterfall wypłat.</span>
+                                </span>
+                            </label>
                             <input type="range" id="exitValSlider" min="5000000" max="150000000" step="1000000"
                                 value="50000000" class="w-full mt-2" oninput="syncExitVal(this.value)">
                             <div class="flex items-center mt-1">
@@ -207,7 +373,18 @@
                         <!-- Probability Slider -->
                         <div class="bg-yellow-50 p-3 rounded border border-yellow-200">
                             <div class="flex justify-between items-center mb-1">
-                                <label class="block text-xs font-bold text-yellow-800">Szansa na taki Exit</label>
+                                <label class="block text-xs font-bold text-yellow-800">
+                                    Szansa na taki Exit
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3 text-yellow-600" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Realistyczne prawdopodobieństwo, że spółka zostanie
+                                            sprzedana za taką kwotę. Startup to ryzyko - większość kończy na 0.</span>
+                                    </span>
+                                </label>
                                 <span class="text-sm font-bold text-yellow-700" id="probVal">20%</span>
                             </div>
                             <input type="range" id="exitProb" min="1" max="100" step="1" value="20"
@@ -224,7 +401,17 @@
                                     class="w-full p-2 border rounded text-sm" oninput="calculate()">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-700">Podatek Equity</label>
+                                <label class="block text-xs font-medium text-gray-700">
+                                    Podatek Equity
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Podatek od zysków kapitałowych (np. Belka 19%).
+                                            Płacisz go tylko od realnego zysku przy sprzedaży udziałów.</span>
+                                    </span>
+                                </label>
                                 <div class="flex items-center">
                                     <input type="number" id="taxRate" value="19"
                                         class="w-full p-2 border rounded text-sm" oninput="calculate()">
@@ -255,7 +442,19 @@
                     <div class="card p-4 text-center border border-purple-200 bg-purple-50 relative overflow-hidden">
                         <div class="absolute top-0 right-0 bg-purple-200 text-purple-800 text-[10px] px-2 font-bold">
                             REALITY CHECK</div>
-                        <p class="text-xs text-purple-700 uppercase font-bold mt-1">Total EV (Ważone)</p>
+                        <p class="text-xs text-purple-700 uppercase font-bold mt-1">
+                            Total EV (Ważone)
+                            <span class="tooltip">
+                                <svg class="w-3 h-3 inline pb-0.5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="tooltiptext">Expected Value. Statystyczna wartość Twojej obecnej pozycji.
+                                    Mnożymy potencjalny zysk przez szansę sukcesu. Jeśli EV < Pensja na etacie, to
+                                        biznesowo "nie opłaca się" ryzykować.</span>
+                                </span>
+                        </p>
                         <p class="text-xl font-black text-purple-700" id="evTotal">-</p>
                         <p class="text-[10px] text-purple-500">Wartość Oczekiwana</p>
                     </div>
@@ -292,7 +491,18 @@
                                 <span class="font-bold" id="tblExit">-</span>
                             </div>
                             <div class="flex justify-between text-red-600">
-                                <span>- Preference Stack</span>
+                                <span>
+                                    - Preference Stack
+                                    <span class="tooltip">
+                                        <svg class="w-3 h-3 inline pb-0.5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="tooltiptext">Kwota należna inwestorowi przed jakimkolwiek podziałem
+                                            dla założycieli. Obejmuje wkład * mnożnik oraz skumulowane dywidendy.</span>
+                                    </span>
+                                </span>
                                 <span class="font-bold" id="tblPref">-</span>
                             </div>
                             <div class="flex justify-between border-t pt-2">
@@ -376,6 +586,7 @@
         }
 
         function calculateNetSalary(grossYearly, type) {
+            if (grossYearly <= 0) return { netYearly: 0, taxYearly: 0 };
             const grossMonthly = grossYearly / 12;
             let netMonthly = 0;
             let totalTaxMonthly = 0;
@@ -398,18 +609,18 @@
                 totalTaxMonthly = social + health + monthlyTax;
 
             } else if (type === 'b2b_lin') {
-                const income = grossMonthly - ZUS_FULL;
+                const income = Math.max(0, grossMonthly - ZUS_FULL);
                 const health = income * 0.049;
-                const tax = income * 0.19;
+                const tax = Math.max(0, income * 0.19);
                 netMonthly = grossMonthly - ZUS_FULL - health - tax;
-                totalTaxMonthly = ZUS_FULL + health + tax;
+                totalTaxMonthly = (grossMonthly - netMonthly);
 
             } else if (type === 'b2b_ryczalt') {
                 const HEALTH_FIXED = 1100;
-                const taxBase = grossMonthly - ZUS_FULL;
+                const taxBase = Math.max(0, grossMonthly - ZUS_FULL);
                 const tax = taxBase * 0.12;
                 netMonthly = grossMonthly - ZUS_FULL - HEALTH_FIXED - tax;
-                totalTaxMonthly = ZUS_FULL + HEALTH_FIXED + tax;
+                totalTaxMonthly = (grossMonthly - netMonthly);
             }
 
             return {
@@ -610,6 +821,12 @@
             safeSetText('evEquity', formatPLN(evEquity));
             safeSetText('evSalary', formatPLN(totalSalaryNet));
             safeSetText('evTotalBox', formatPLN(evTotal));
+
+            // Warning for negative salary
+            const warningEl = document.getElementById('salaryWarning');
+            if (warningEl) {
+                warningEl.classList.toggle('hidden', totalSalaryNet >= 0 || salaryYearly === 0);
+            }
 
             const evCommentEl = document.getElementById('evComment');
             if (evCommentEl) {
