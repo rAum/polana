@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator VC Pro - PLN/USD/EUR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Custom Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #334155;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 50;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            font-weight: normal;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #334155 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .currency-badge {
+            font-size: 0.7em;
+            opacity: 0.7;
+            font-weight: normal;
+            margin-left: 4px;
+        }
+    </style>
+</head>
+
+<body class="text-slate-800">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-600 text-white p-2 rounded-lg"><i class="fas fa-calculator"></i></div>
+                <h1 class="text-lg font-bold text-slate-800">Founder VC Simulator <span class="text-blue-600">Pro</span>
+                </h1>
+            </div>
+
+            <!-- Currency Settings Toolbar -->
+            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border border-gray-200 text-sm">
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-500 text-xs uppercase font-bold">Waluta:</span>
+                    <select id="mainCurrency"
+                        class="bg-white border rounded px-2 py-1 font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        onchange="calculate()">
+                        <option value="PLN">PLN (zł)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                    </select>
+                </div>
+                <div class="h-4 w-px bg-gray-300"></div>
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="showFx" class="rounded text-blue-600 focus:ring-blue-500"
+                        onchange="toggleFx()">
+                    <span class="text-gray-600 text-xs">Konwersja</span>
+                </label>
+                <div id="fxControls" class="hidden flex items-center gap-2 animate-fade-in">
+                    <span class="text-gray-400">→</span>
+                    <select id="fxCurrency" class="bg-white border rounded px-2 py-1 text-xs" onchange="calculate()">
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="PLN">PLN</option>
+                    </select>
+                    <input type="number" id="fxRate" class="w-16 px-2 py-1 border rounded text-xs text-right"
+                        value="4.00" step="0.01" placeholder="Kurs" oninput="calculate()">
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="resetData()"
+                    class="text-xs text-red-500 hover:text-red-700 px-2 py-1 transition font-medium">Reset</button>
+                <button onclick="saveData()"
+                    class="text-xs bg-slate-800 text-white hover:bg-slate-700 px-4 py-2 rounded shadow transition"
+                    id="saveBtn">Zapisz Stan</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEWA KOLUMNA: Inputy -->
+        <div class="lg:col-span-4 space-y-5">
+
+            <!-- Sekcja 1: Cap Table -->
+            <div class="card p-5 border-l-4 border-emerald-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                        <span
+                            class="bg-emerald-100 text-emerald-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                        Cap Table (Przed rundą)
+                    </h2>
+                    <div class="tooltip text-gray-400">
+                        <i class="far fa-question-circle"></i>
+                        <span class="tooltip-text">Struktura udziałów w firmie przed wejściem inwestora. Suma musi
+                            wynosić 100%.</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="f1Name" value="Founder 1"
+                            class="w-1/3 p-2 bg-gray-50 border rounded text-gray-700 font-medium" placeholder="Imię">
+                        <div class="relative w-2/3">
+                            <input type="number" id="f1Share" value="50"
+                                class="w-full pl-3 pr-8 p-2 border rounded focus:ring-1 focus:ring-emerald-500"
+                                oninput="validateCapTable()">
+                            <span class="absolute right-3 top-2 text-gray-400">%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="f2Name" value="Founder 2"
+                            class="w-1/3 p-2 bg-gray-50 border rounded text-gray-700 font-medium" placeholder="Imię">
+                        <div class="relative w-2/3">
+                            <input type="number" id="f2Share" value="30"
+                                class="w-full pl-3 pr-8 p-2 border rounded focus:ring-1 focus:ring-emerald-500"
+                                oninput="validateCapTable()">
+                            <span class="absolute right-3 top-2 text-gray-400">%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="f3Name" value="Option Pool"
+                            class="w-1/3 p-2 bg-gray-50 border rounded text-gray-700 font-medium" placeholder="Imię">
+                        <div class="relative w-2/3">
+                            <input type="number" id="f3Share" value="20"
+                                class="w-full pl-3 pr-8 p-2 border rounded focus:ring-1 focus:ring-emerald-500"
+                                oninput="validateCapTable()">
+                            <span class="absolute right-3 top-2 text-gray-400">%</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs mt-1">
+                        <span class="text-gray-400">Upewnij się, że suma to 100%</span>
+                        <span id="capTableSum" class="font-bold text-emerald-600">Suma: 100%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sekcja 2: Runda Inwestycyjna -->
+            <div class="card p-5 border-l-4 border-blue-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                        <span
+                            class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                        Parametry Rundy
+                    </h2>
+                    <div class="tooltip text-gray-400">
+                        <i class="far fa-question-circle"></i>
+                        <span class="tooltip-text">
+                            <strong>Pre-Money:</strong> Wycena firmy przed wrzuceniem gotówki.<br>
+                            <strong>Post-Money:</strong> Pre-Money + Inwestycja.<br>
+                            To określa ile % oddajesz za gotówkę.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Kwota Inwestycji (Cash
+                            in)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-2 text-gray-400 currency-symbol">zł</span>
+                            <input type="number" id="investment"
+                                class="w-full pl-10 p-2 border rounded font-bold text-slate-800 focus:ring-2 focus:ring-blue-200 outline-none"
+                                value="1000000" oninput="recalcRound('investment')">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Wycena
+                                Pre-Money</label>
+                            <div class="relative">
+                                <span class="absolute left-2 top-2 text-gray-400 currency-symbol">zł</span>
+                                <input type="number" id="preMoney"
+                                    class="w-full pl-8 p-2 border rounded text-sm focus:ring-1 focus:ring-blue-200"
+                                    value="4000000" oninput="recalcRound('pre')">
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between">
+                                <label class="block text-[10px] font-bold uppercase text-blue-600 mb-1">Udziały
+                                    Inwestora</label>
+                                <div class="tooltip text-blue-300 text-[10px]">
+                                    <i class="fas fa-sync-alt"></i>
+                                    <span class="tooltip-text right-0 left-auto margin-0">Zmiana tego pola automatycznie
+                                        przeliczy wycenę Pre-Money.</span>
+                                </div>
+                            </div>
+                            <div class="relative">
+                                <input type="number" id="investorShareInput"
+                                    class="w-full p-2 border border-blue-200 bg-blue-50 rounded font-bold text-blue-700 text-sm focus:ring-1 focus:ring-blue-300"
+                                    value="20" oninput="recalcRound('pct')">
+                                <span class="absolute right-3 top-2 text-blue-600">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-2 rounded text-sm flex justify-between border border-slate-200">
+                        <span class="text-gray-500">Post-Money:</span>
+                        <span id="postMoneyDisplay" class="font-bold text-slate-700">5 000 000 zł</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sekcja 3: Term Sheet -->
+            <div class="card p-5 border-l-4 border-purple-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                        <span
+                            class="bg-purple-100 text-purple-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
+                        Warunki (Term Sheet)
+                    </h2>
+                    <div class="tooltip text-gray-400">
+                        <i class="far fa-question-circle"></i>
+                        <span class="tooltip-text">
+                            Kluczowe zapisy prawne wpływające na to, kto dostanie pieniądze pierwszy przy wyjściu
+                            (Exit).
+                        </span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="flex items-center gap-1 mb-1">
+                                <label class="block text-[10px] font-bold uppercase text-gray-500">Liq.
+                                    Preference</label>
+                                <div class="tooltip text-gray-400 text-[10px]"><i class="fas fa-info-circle"></i>
+                                    <span class="tooltip-text">Mnożnik zwrotu inwestycji, który inwestor musi otrzymać
+                                        ZANIM founderzy dostaną cokolwiek. 1x to standard. >1x to niekorzystne.</span>
+                                </div>
+                            </div>
+                            <div class="relative">
+                                <input type="number" id="liqPrefMult"
+                                    class="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-purple-200"
+                                    value="1.0" step="0.1" oninput="calculate()">
+                                <span class="absolute right-3 top-2 text-gray-400 text-xs font-bold">x</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-1 mb-1">
+                                <label class="block text-[10px] font-bold uppercase text-gray-500">Participation</label>
+                                <div class="tooltip text-gray-400 text-[10px]"><i class="fas fa-info-circle"></i>
+                                    <span class="tooltip-text">
+                                        <strong>Non-Participating:</strong> Inwestor bierze ALBO preferencję ALBO
+                                        udział.<br>
+                                        <strong>Participating:</strong> Bierze preferencję ORAZ udział (tzw. Double
+                                        Dipping).
+                                    </span>
+                                </div>
+                            </div>
+                            <select id="participationType" class="w-full p-2 border rounded bg-white text-sm"
+                                onchange="calculate()">
+                                <option value="non-participating">Nie (Non-Partic.)</option>
+                                <option value="participating">Tak (Participating)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center gap-1 mb-1">
+                            <label class="block text-[10px] font-bold uppercase text-gray-500">Participation Cap</label>
+                            <div class="tooltip text-gray-400 text-[10px]"><i class="fas fa-info-circle"></i>
+                                <span class="tooltip-text">Górny limit zysku inwestora przy opcji Participating. Np. 3x
+                                    inwestycji. 0 oznacza brak limitu (najgorsze dla foundera).</span>
+                            </div>
+                        </div>
+                        <input type="number" id="participationCap" class="w-full p-2 border rounded text-sm"
+                            placeholder="Brak (0)" oninput="calculate()">
+                        <p class="text-[10px] text-gray-400 mt-1">Mnożnik inwestycji (np. 3 = 3x cap). Zostaw puste dla
+                            braku.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sekcja 4: Vesting -->
+            <div class="card p-5 border-l-4 border-orange-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                        <span
+                            class="bg-orange-100 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">4</span>
+                        Rozwodnienie i Vesting
+                    </h2>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="block text-xs font-bold uppercase text-gray-500">Przyszłe Rozwodnienie</label>
+                            <span id="futureDilutionVal" class="text-xs font-bold text-orange-600">0%</span>
+                        </div>
+                        <input type="range" id="futureDilution" min="0" max="80" value="0"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                            oninput="updateRangeVal('futureDilutionVal', this.value); calculate()">
+                        <p class="text-[10px] text-gray-400 mt-1">Ile % firmy zostanie sprzedane innym inwestorom
+                            (Series A, B...) przed Exitem.</p>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-3">
+                        <div class="flex items-center gap-1 mb-2">
+                            <label class="block text-xs font-bold uppercase text-gray-500">Status Vestingu</label>
+                            <div class="tooltip text-gray-400 text-[10px]"><i class="fas fa-info-circle"></i>
+                                <span class="tooltip-text">Vesting w miesiącach. Domyślny standard to 48 miesięcy (4
+                                    lata) z rocznym cliffem lub % upfront.</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[9px] text-gray-400 uppercase">Całość (Mies.)</label>
+                                <input type="number" id="vestingTotalMonths" class="w-full p-1.5 border rounded text-xs"
+                                    value="48" oninput="calculate()">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] text-gray-400 uppercase">Minęło (Mies.)</label>
+                                <input type="number" id="monthsToExit"
+                                    class="w-full p-1.5 border rounded text-xs bg-yellow-50 border-yellow-200 font-bold"
+                                    value="48" oninput="calculate()">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] text-gray-400 uppercase">Upfront (%)</label>
+                                <div class="tooltip w-full">
+                                    <input type="number" id="vestingUpfront" class="w-full p-1.5 border rounded text-xs"
+                                        value="25" oninput="calculate()">
+                                    <span class="tooltip-text">Ile % akcji masz 'zaklepane' od razu (lub po cliffie),
+                                        bez czekania na resztę miesięcy.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sekcja Ryzyka -->
+            <div class="card p-4 border border-red-100 bg-red-50/50">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="font-bold text-sm text-red-800 flex items-center gap-2">
+                        <i class="fas fa-exclamation-triangle"></i> Czerwone Flagi
+                    </h2>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-2 hover:bg-red-50 p-1 rounded">
+                        <input type="checkbox" id="riskRatchet" class="form-checkbox text-red-600 rounded"
+                            onchange="calculateRisk()">
+                        <div class="tooltip">
+                            <span class="text-xs text-slate-700 cursor-help border-b border-dotted border-red-300">Full
+                                Ratchet (Anty-Dilution)</span>
+                            <span class="tooltip-text">Najbardziej drastyczna ochrona inwestora. Jeśli w przyszłości
+                                sprzedasz akcje taniej (Down Round), inwestor dostaje darmowe akcje, by wyrównać cenę do
+                                nowej, niższej. Bardzo rozwadnia founderów.</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 hover:bg-red-50 p-1 rounded">
+                        <input type="checkbox" id="riskDragAlong" class="form-checkbox text-red-600 rounded"
+                            onchange="calculateRisk()">
+                        <div class="tooltip">
+                            <span class="text-xs text-slate-700 cursor-help border-b border-dotted border-red-300">Drag
+                                Along (Bez ceny min.)</span>
+                            <span class="tooltip-text">Prawo inwestora do zmuszenia pozostałych wspólników (Ciebie) do
+                                sprzedaży udziałów, jeśli inwestor znajdzie kupca. Bez ustalonej ceny minimalnej mogą
+                                Cię zmusić do sprzedaży za grosze.</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 hover:bg-red-50 p-1 rounded">
+                        <input type="checkbox" id="riskLiquidation" class="form-checkbox text-red-600 rounded"
+                            onchange="calculateRisk()">
+                        <div class="tooltip">
+                            <span
+                                class="text-xs text-slate-700 cursor-help border-b border-dotted border-red-300">Senior
+                                Liquidation Pref</span>
+                            <span class="tooltip-text">Ten inwestor dostaje swoje pieniądze (i zwrot) jako pierwszy,
+                                przed wszystkimi innymi inwestorami z poprzednich rund i przed Tobą. Tworzy 'kolejkę' do
+                                pieniędzy.</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="riskScorePanel"
+                    class="mt-3 text-center text-xs font-bold py-1 px-2 rounded bg-green-200 text-green-800">
+                    Ocena: Bezpiecznie
+                </div>
+            </div>
+
+        </div>
+
+        <!-- PRAWA KOLUMNA: Wyniki -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+
+            <!-- Główny Panel Symulacji -->
+            <div class="card p-6 md:p-8 flex-grow border border-gray-100">
+
+                <div class="mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800">Symulacja Wyjścia (Exit)</h2>
+                            <p class="text-sm text-gray-500">Za ile zostanie sprzedana cała spółka?</p>
+                        </div>
+                        <div class="text-right mt-4 md:mt-0 w-full md:w-auto">
+                            <div class="relative">
+                                <span
+                                    class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-bold currency-symbol">zł</span>
+                                <input type="number" id="exitManualInput" value="10000000"
+                                    class="w-full md:w-48 pl-8 pr-4 py-2 border-2 border-blue-100 rounded-lg text-xl font-bold text-blue-700 text-right focus:ring-2 focus:ring-blue-500 outline-none"
+                                    oninput="syncSlider(this.value)">
+                            </div>
+                            <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Wpisz kwotę lub użyj
+                                suwaka</div>
+                        </div>
+                    </div>
+
+                    <input type="range" id="exitSlider" min="0" max="500000000" step="100000" value="10000000"
+                        class="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-500 transition-all"
+                        oninput="syncInput(this.value)">
+                    <div class="flex justify-between text-xs text-gray-400 mt-2 font-mono">
+                        <span>0</span>
+                        <span>100M</span>
+                        <span>250M</span>
+                        <span>375M</span>
+                        <span>500M+</span>
+                    </div>
+                </div>
+
+                <!-- Wyniki Founderów -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <!-- F1 -->
+                    <div
+                        class="border border-emerald-100 bg-emerald-50/30 rounded-xl p-4 relative overflow-hidden group hover:border-emerald-300 transition">
+                        <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider"
+                                id="resF1Name">FOUNDER 1</span>
+                            <span
+                                class="text-[10px] bg-white border border-emerald-100 px-2 py-0.5 rounded text-emerald-600 font-mono"
+                                id="resF1ShareInit">50%</span>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 mb-1" id="resF1Payout">0 zł</div>
+                        <!-- FX Preview -->
+                        <div class="text-xs text-gray-400 fx-display hidden" id="resF1Fx">~0 $</div>
+
+                        <div class="w-full bg-gray-200 rounded-full h-1 mt-2 mb-1">
+                            <div class="bg-emerald-500 h-1 rounded-full" id="vestingBarF1" style="width: 100%"></div>
+                        </div>
+                        <div class="text-[10px] text-emerald-600" id="resF1Vested">Vested: 100%</div>
+                    </div>
+
+                    <!-- F2 -->
+                    <div
+                        class="border border-emerald-100 bg-emerald-50/30 rounded-xl p-4 relative overflow-hidden group hover:border-emerald-300 transition">
+                        <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-400"></div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider"
+                                id="resF2Name">FOUNDER 2</span>
+                            <span
+                                class="text-[10px] bg-white border border-emerald-100 px-2 py-0.5 rounded text-emerald-600 font-mono"
+                                id="resF2ShareInit">30%</span>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 mb-1" id="resF2Payout">0 zł</div>
+                        <div class="text-xs text-gray-400 fx-display hidden" id="resF2Fx">~0 $</div>
+                        <div class="w-full bg-gray-200 rounded-full h-1 mt-2 mb-1">
+                            <div class="bg-emerald-400 h-1 rounded-full" id="vestingBarF2" style="width: 100%"></div>
+                        </div>
+                        <div class="text-[10px] text-emerald-600" id="resF2Vested">Vested: 100%</div>
+                    </div>
+
+                    <!-- F3 -->
+                    <div
+                        class="border border-emerald-100 bg-emerald-50/30 rounded-xl p-4 relative overflow-hidden group hover:border-emerald-300 transition">
+                        <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-300"></div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider"
+                                id="resF3Name">OPTION POOL</span>
+                            <span
+                                class="text-[10px] bg-white border border-emerald-100 px-2 py-0.5 rounded text-emerald-600 font-mono"
+                                id="resF3ShareInit">20%</span>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 mb-1" id="resF3Payout">0 zł</div>
+                        <div class="text-xs text-gray-400 fx-display hidden" id="resF3Fx">~0 $</div>
+                        <div class="w-full bg-gray-200 rounded-full h-1 mt-2 mb-1">
+                            <div class="bg-emerald-300 h-1 rounded-full" id="vestingBarF3" style="width: 100%"></div>
+                        </div>
+                        <div class="text-[10px] text-emerald-600" id="resF3Vested">Vested: 100%</div>
+                    </div>
+                </div>
+
+                <!-- Wynik Inwestora -->
+                <div
+                    class="bg-slate-900 text-white p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center mb-8 relative overflow-hidden">
+                    <div
+                        class="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-blue-900/50 to-transparent pointer-events-none">
+                    </div>
+                    <div class="z-10 mb-4 md:mb-0">
+                        <h3 class="text-blue-400 font-bold text-xs uppercase mb-1 tracking-widest">Inwestor VC</h3>
+                        <div class="text-gray-400 text-sm">Zwrot gotówkowy (Cash-on-Cash)</div>
+                        <div class="text-gray-500 text-xs mt-1" id="vcStructureInfo">Pref + Participation</div>
+                    </div>
+                    <div class="text-center md:text-right z-10">
+                        <div class="text-3xl font-black tracking-tight" id="vcPayout">0 zł</div>
+                        <div class="text-sm text-gray-400 fx-display hidden" id="vcPayoutFx">~0 $</div>
+                        <div class="text-sm font-bold text-green-400 mt-1 bg-green-900/30 px-3 py-1 rounded-full inline-block"
+                            id="vcRoi">ROI: 0.0x</div>
+                    </div>
+                </div>
+
+                <!-- Waterfall Chart -->
+                <div>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
+                        Struktura Wypłaty (Waterfall)
+                        <div class="tooltip text-gray-400"><i class="fas fa-info-circle"></i>
+                            <span class="tooltip-text">Kolejność dziobania: Najpierw Liquidation Preference, potem
+                                reszta dla udziałowców.</span>
+                        </div>
+                    </h3>
+                    <div
+                        class="w-full h-12 flex rounded-lg overflow-hidden font-bold text-white text-[10px] shadow-inner bg-gray-100 border border-gray-200">
+                        <div id="barPref"
+                            class="bg-purple-600 flex flex-col items-center justify-center whitespace-nowrap overflow-hidden transition-all duration-500"
+                            style="width: 0%"><span>PREF</span></div>
+                        <div id="barVc"
+                            class="bg-blue-500 flex flex-col items-center justify-center whitespace-nowrap overflow-hidden transition-all duration-500"
+                            style="width: 0%"><span>VC+</span></div>
+                        <div id="barF1"
+                            class="bg-emerald-600 flex flex-col items-center justify-center whitespace-nowrap overflow-hidden transition-all duration-500 border-r border-emerald-700/20"
+                            style="width: 0%"><span>F1</span></div>
+                        <div id="barF2"
+                            class="bg-emerald-500 flex flex-col items-center justify-center whitespace-nowrap overflow-hidden transition-all duration-500 border-r border-emerald-600/20"
+                            style="width: 0%"><span>F2</span></div>
+                        <div id="barF3"
+                            class="bg-emerald-400 flex flex-col items-center justify-center whitespace-nowrap overflow-hidden transition-all duration-500"
+                            style="width: 0%"><span>OP</span></div>
+                        <div id="barDilution"
+                            class="bg-slate-400 flex flex-col items-center justify-center whitespace-nowrap overflow-hidden transition-all duration-500"
+                            style="width: 0%"><span class="text-slate-100">DILUTION</span></div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-4 mt-3 text-[10px] text-gray-500 justify-center">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 bg-purple-600 rounded-sm"></div>Gwarantowany Zwrot (Pref)
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 bg-blue-500 rounded-sm"></div>Zysk Inwestora
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 bg-emerald-500 rounded-sm"></div>Founderzy
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 bg-slate-400 rounded-sm"></div>Inni (Rozwodnienie)
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Tabela Scenariuszy -->
+            <div class="card p-6 overflow-hidden">
+                <h3 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wide">Analiza Scenariuszy (Ile
+                    dostaniesz na rękę?)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold">Exit</th>
+                                <th class="px-4 py-3 font-semibold text-blue-600">Dla VC</th>
+                                <th class="px-4 py-3 font-semibold text-emerald-600">Dla F1</th>
+                                <th class="px-4 py-3 font-semibold text-right">Mnożnik VC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scenarioTableBody" class="divide-y divide-gray-100 bg-white">
+                            <!-- JS Generated -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-2 text-[10px] text-gray-400 text-center">
+                    *Wartości szacunkowe uwzględniające obecne ustawienia vestingu i rozwodnienia.
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Stopka -->
+    <footer class="text-center p-8 text-slate-400 text-xs">
+        <p class="font-medium">Kalkulator Inwestycyjny VC Pro</p>
+        <p class="mt-1 opacity-70">Narzędzie symulacyjne. Nie stanowi porady prawnej ani inwestycyjnej.</p>
+    </footer>
+
+    <script>
+        // --- LOGIKA APLIKACJI ---
+
+        // Konfiguracja Walut
+        const currencyMap = {
+            'PLN': { symbol: 'zł', locale: 'pl-PL' },
+            'USD': { symbol: '$', locale: 'en-US' },
+            'EUR': { symbol: '€', locale: 'de-DE' }
+        };
+
+        // Stan aplikacji
+        let currentCurrency = 'PLN';
+
+        function toggleFx() {
+            const show = document.getElementById('showFx').checked;
+            const controls = document.getElementById('fxControls');
+            const displays = document.querySelectorAll('.fx-display');
+
+            if (show) {
+                controls.classList.remove('hidden');
+                displays.forEach(el => el.classList.remove('hidden'));
+            } else {
+                controls.classList.add('hidden');
+                displays.forEach(el => el.classList.add('hidden'));
+            }
+            calculate();
+        }
+
+        const formatMainCurrency = (val) => {
+            const conf = currencyMap[currentCurrency];
+
+            // Formatowanie "human readable"
+            let formatted;
+            if (val >= 1000000) {
+                formatted = (val / 1000000).toLocaleString(conf.locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + ' mln';
+            } else if (val >= 1000) {
+                formatted = (val / 1000).toLocaleString(conf.locale, { maximumFractionDigits: 0 }) + ' tys.';
+            } else {
+                formatted = val.toLocaleString(conf.locale, { maximumFractionDigits: 0 });
+            }
+            return `${formatted} ${conf.symbol}`;
+        };
+
+        const formatFxCurrency = (val) => {
+            const targetCurr = document.getElementById('fxCurrency').value;
+            const rate = parseFloat(document.getElementById('fxRate').value) || 1;
+            const conf = currencyMap[targetCurr];
+
+            // Logika konwersji (uproszczona: mnożenie czy dzielenie?)
+            // Zakładamy, że kurs to Main -> Target. Np PLN -> USD (0.25) lub USD -> PLN (4.0).
+            // Ale UXowo lepiej wpisać "Kurs USD: 4.00" gdy mamy PLN. Czyli dzielimy przez kurs.
+            // Przyjmijmy konwencję: "1 Unit of Target = X Units of Main". Np. 1 USD = 4.00 PLN.
+            // Wtedy: Value (PLN) / Rate (4.00) = Value (USD).
+
+            const converted = val / rate;
+
+            let formatted;
+            if (converted >= 1000000) {
+                formatted = (converted / 1000000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + 'M';
+            } else if (converted >= 1000) {
+                formatted = (converted / 1000).toLocaleString('en-US', { maximumFractionDigits: 0 }) + 'k';
+            } else {
+                formatted = converted.toLocaleString('en-US', { maximumFractionDigits: 0 });
+            }
+            return `≈ ${formatted} ${conf.symbol}`;
+        }
+
+        const updateRangeVal = (id, val) => {
+            document.getElementById(id).innerText = val + '%';
+        };
+
+        function syncInput(val) {
+            document.getElementById('exitManualInput').value = val;
+            calculate();
+        }
+
+        function syncSlider(val) {
+            document.getElementById('exitSlider').value = val;
+            calculate();
+        }
+
+        // --- CORE LOGIC ---
+
+        function recalcRound(source) {
+            const investment = parseFloat(document.getElementById('investment').value) || 0;
+
+            if (source === 'investment' || source === 'pre') {
+                const preMoney = parseFloat(document.getElementById('preMoney').value) || 0;
+                const postMoney = preMoney + investment;
+                const pct = postMoney > 0 ? (investment / postMoney) * 100 : 0;
+                document.getElementById('investorShareInput').value = pct.toFixed(2);
+                document.getElementById('postMoneyDisplay').innerText = formatMainCurrency(postMoney);
+            }
+            else if (source === 'pct') {
+                const pct = parseFloat(document.getElementById('investorShareInput').value) / 100;
+                if (pct > 0 && pct < 1) {
+                    const postMoney = investment / pct;
+                    const preMoney = postMoney - investment;
+                    document.getElementById('preMoney').value = preMoney.toFixed(0);
+                    document.getElementById('postMoneyDisplay').innerText = formatMainCurrency(postMoney);
+                }
+            }
+            calculate();
+        }
+
+        function validateCapTable() {
+            const f1 = parseFloat(document.getElementById('f1Share').value) || 0;
+            const f2 = parseFloat(document.getElementById('f2Share').value) || 0;
+            const f3 = parseFloat(document.getElementById('f3Share').value) || 0;
+            const sum = f1 + f2 + f3;
+
+            const sumEl = document.getElementById('capTableSum');
+            sumEl.innerText = `Suma: ${sum}%`;
+
+            if (Math.abs(sum - 100) > 0.1) {
+                sumEl.className = "font-bold text-red-500";
+            } else {
+                sumEl.className = "font-bold text-emerald-600";
+            }
+            calculate();
+        }
+
+        function calculate() {
+            // Update UI Symbols based on selection
+            currentCurrency = document.getElementById('mainCurrency').value;
+            const sym = currencyMap[currentCurrency].symbol;
+            document.querySelectorAll('.currency-symbol').forEach(el => el.innerText = sym);
+
+            // Inputs
+            const investment = parseFloat(document.getElementById('investment').value) || 0;
+            const preMoney = parseFloat(document.getElementById('preMoney').value) || 0;
+            const postMoney = preMoney + investment;
+
+            // Post Money Update
+            document.getElementById('postMoneyDisplay').innerText = formatMainCurrency(postMoney);
+
+            const liqPrefMult = parseFloat(document.getElementById('liqPrefMult').value) || 1;
+            const participationType = document.getElementById('participationType').value;
+            const participationCap = parseFloat(document.getElementById('participationCap').value) || 0;
+
+            const futureDilutionPct = parseFloat(document.getElementById('futureDilution').value) / 100;
+            const exitValue = parseFloat(document.getElementById('exitManualInput').value) || 0;
+
+            // Vesting
+            const monthsPassed = parseFloat(document.getElementById('monthsToExit').value) || 0;
+            const totalVestingMonths = parseFloat(document.getElementById('vestingTotalMonths').value) || 48;
+            const upfrontPct = parseFloat(document.getElementById('vestingUpfront').value) || 0;
+
+            // Cap Table Init
+            const f1ShareInit = (parseFloat(document.getElementById('f1Share').value) || 0) / 100;
+            const f2ShareInit = (parseFloat(document.getElementById('f2Share').value) || 0) / 100;
+            const f3ShareInit = (parseFloat(document.getElementById('f3Share').value) || 0) / 100;
+
+            // --- MATH ---
+            const vcSharePctInitial = postMoney > 0 ? investment / postMoney : 0;
+            const effectiveVcShare = vcSharePctInitial * (1 - futureDilutionPct);
+            const foundersPoolAtExit = (1 - vcSharePctInitial) * (1 - futureDilutionPct);
+
+            let liquidationPreferenceAmt = investment * liqPrefMult;
+            if (liquidationPreferenceAmt > exitValue) liquidationPreferenceAmt = exitValue;
+
+            let vcPayout = 0;
+
+            // Logic: Non-Participating
+            if (participationType === 'non-participating') {
+                const payoutOptionPref = liquidationPreferenceAmt;
+                const payoutOptionConvert = exitValue * effectiveVcShare;
+
+                if (payoutOptionConvert > payoutOptionPref) {
+                    vcPayout = payoutOptionConvert;
+                    liquidationPreferenceAmt = 0; // Visual fix
+                } else {
+                    vcPayout = payoutOptionPref;
+                }
+            }
+            // Logic: Participating
+            else {
+                vcPayout = liquidationPreferenceAmt;
+                let remaining = exitValue - liquidationPreferenceAmt;
+                if (remaining < 0) remaining = 0;
+
+                let participationPayout = remaining * effectiveVcShare;
+
+                if (participationCap > 0) {
+                    const maxPayout = investment * participationCap;
+                    if (vcPayout + participationPayout > maxPayout) {
+                        const convertPayout = exitValue * effectiveVcShare;
+                        if (convertPayout > maxPayout) {
+                            vcPayout = convertPayout;
+                            liquidationPreferenceAmt = 0;
+                        } else {
+                            vcPayout = maxPayout;
+                        }
+                    } else {
+                        vcPayout += participationPayout;
+                    }
+                } else {
+                    vcPayout += participationPayout;
+                }
+            }
+
+            // Distribute Remaining
+            let remainingForOthers = exitValue - vcPayout;
+            if (remainingForOthers < 0) remainingForOthers = 0;
+
+            let foundersTotalPayout = 0;
+
+            if (participationType === 'non-participating' && vcPayout === liquidationPreferenceAmt) {
+                const commonPoolPct = foundersPoolAtExit + futureDilutionPct;
+                if (commonPoolPct > 0) {
+                    foundersTotalPayout = remainingForOthers * (foundersPoolAtExit / commonPoolPct);
+                }
+            } else {
+                const totalNonVcShare = 1 - effectiveVcShare;
+                if (totalNonVcShare > 0) {
+                    foundersTotalPayout = remainingForOthers * (foundersPoolAtExit / totalNonVcShare);
+                }
+            }
+
+            // Individual Payouts
+            const totalInitF = f1ShareInit + f2ShareInit + f3ShareInit;
+            const f1Payout = totalInitF > 0 ? foundersTotalPayout * (f1ShareInit / totalInitF) : 0;
+            const f2Payout = totalInitF > 0 ? foundersTotalPayout * (f2ShareInit / totalInitF) : 0;
+            const f3Payout = totalInitF > 0 ? foundersTotalPayout * (f3ShareInit / totalInitF) : 0;
+
+            // Vesting Calc (Months)
+            let vestedPct = 0;
+            if (monthsPassed >= totalVestingMonths) {
+                vestedPct = 100;
+            } else {
+                let remainingToVest = 100 - upfrontPct;
+                vestedPct = upfrontPct + (remainingToVest * (monthsPassed / totalVestingMonths));
+            }
+            if (vestedPct > 100) vestedPct = 100;
+
+            // --- UPDATE UI ---
+
+            // Update Names
+            document.getElementById('resF1Name').innerText = document.getElementById('f1Name').value;
+            document.getElementById('resF1ShareInit').innerText = (f1ShareInit * 100).toFixed(0) + '%';
+            document.getElementById('resF1Payout').innerText = formatMainCurrency(f1Payout * (vestedPct / 100));
+            document.getElementById('resF1Fx').innerText = formatFxCurrency(f1Payout * (vestedPct / 100));
+            document.getElementById('resF1Vested').innerText = `Vested: ${vestedPct.toFixed(0)}%`;
+            document.getElementById('vestingBarF1').style.width = vestedPct + '%';
+
+            document.getElementById('resF2Name').innerText = document.getElementById('f2Name').value;
+            document.getElementById('resF2ShareInit').innerText = (f2ShareInit * 100).toFixed(0) + '%';
+            document.getElementById('resF2Payout').innerText = formatMainCurrency(f2Payout * (vestedPct / 100));
+            document.getElementById('resF2Fx').innerText = formatFxCurrency(f2Payout * (vestedPct / 100));
+            document.getElementById('resF2Vested').innerText = `Vested: ${vestedPct.toFixed(0)}%`;
+            document.getElementById('vestingBarF2').style.width = vestedPct + '%';
+
+            document.getElementById('resF3Name').innerText = document.getElementById('f3Name').value;
+            document.getElementById('resF3ShareInit').innerText = (f3ShareInit * 100).toFixed(0) + '%';
+            document.getElementById('resF3Payout').innerText = formatMainCurrency(f3Payout * (vestedPct / 100));
+            document.getElementById('resF3Fx').innerText = formatFxCurrency(f3Payout * (vestedPct / 100));
+            document.getElementById('resF3Vested').innerText = `Vested: ${vestedPct.toFixed(0)}%`;
+            document.getElementById('vestingBarF3').style.width = vestedPct + '%';
+
+            // VC Results
+            document.getElementById('vcPayout').innerText = formatMainCurrency(vcPayout);
+            document.getElementById('vcPayoutFx').innerText = formatFxCurrency(vcPayout);
+            const roi = investment > 0 ? (vcPayout / investment).toFixed(2) : 0;
+            document.getElementById('vcRoi').innerText = `ROI: ${roi}x`;
+
+            // Info text
+            let vcInfo = "Standard Deal";
+            if (participationType === 'participating') vcInfo = "Double Dipping (Pref + %)";
+            else if (vcPayout === liquidationPreferenceAmt && vcPayout > 0) vcInfo = "Tylko Preference (Downside Prot.)";
+            else vcInfo = "Konwersja na akcje (Upside)";
+            document.getElementById('vcStructureInfo').innerText = vcInfo;
+
+            // Bar Chart
+            const safeExit = exitValue || 1;
+            const wPref = (liquidationPreferenceAmt / safeExit) * 100;
+            const wVcProfit = ((vcPayout - liquidationPreferenceAmt) / safeExit) * 100;
+            const wF1 = (f1Payout / safeExit) * 100;
+            const wF2 = (f2Payout / safeExit) * 100;
+            const wF3 = (f3Payout / safeExit) * 100;
+            const wDilution = Math.max(0, 100 - wPref - wVcProfit - wF1 - wF2 - wF3);
+
+            const setBar = (id, pct, label) => {
+                const el = document.getElementById(id);
+                el.style.width = pct + '%';
+                // Hide label if too small
+                el.querySelector('span').style.opacity = pct > 5 ? 1 : 0;
+            };
+
+            setBar('barPref', wPref);
+            setBar('barVc', wVcProfit);
+            setBar('barF1', wF1);
+            setBar('barF2', wF2);
+            setBar('barF3', wF3);
+            setBar('barDilution', wDilution);
+
+            calculateRisk();
+
+            // Scenario Table
+            const f1RelativeShare = totalInitF > 0 ? (f1ShareInit / totalInitF) : 0;
+            const effectiveF1Share = foundersPoolAtExit * f1RelativeShare;
+            const commonPoolPct = foundersPoolAtExit + futureDilutionPct;
+
+            generateScenarioTable(effectiveVcShare, liquidationPreferenceAmt, participationType, effectiveF1Share, commonPoolPct);
+        }
+
+        function generateScenarioTable(effVcShare, prefAmt, type, effF1Share, commonPoolPct) {
+            const tbody = document.getElementById('scenarioTableBody');
+            tbody.innerHTML = '';
+
+            // Generate dynamic scenarios based on current input to be relevant
+            const base = parseFloat(document.getElementById('exitManualInput').value) || 10000000;
+            // Create range: 0.5x, 1x, 2x, 5x, 10x current exit target
+            // OR fixed massive range
+            const investment = parseFloat(document.getElementById('investment').value) || 1;
+
+            const scenarios = [
+                investment * 2, // Break evenish
+                investment * 10, // Good
+                investment * 50, // Great
+                investment * 100, // Unicorn territory
+                500000000 // Max cap
+            ].sort((a, b) => a - b);
+
+            // Remove duplicates
+            const uniqueScenarios = [...new Set(scenarios)];
+
+            uniqueScenarios.forEach(val => {
+                let localVcPayout = 0;
+                let localPref = prefAmt;
+                if (localPref > val) localPref = val;
+
+                if (type === 'non-participating') {
+                    const conv = val * effVcShare;
+                    localVcPayout = Math.max(localPref, conv);
+                } else {
+                    localVcPayout = localPref + Math.max(0, (val - localPref) * effVcShare);
+                }
+
+                let f1Pay = 0;
+                const remaining = val - localVcPayout;
+
+                if (type === 'non-participating' && localVcPayout === localPref) {
+                    if (commonPoolPct > 0) f1Pay = remaining * (effF1Share / commonPoolPct);
+                } else {
+                    const totalNonVc = 1 - effVcShare;
+                    if (totalNonVc > 0) f1Pay = remaining * (effF1Share / totalNonVc);
+                }
+
+                // Show Vested amount in table? Let's show "Potential" (Fully Vested) vs Current would be confusing in table.
+                // Standard scenario tables usually show "Outcome".
+
+                const mult = (localVcPayout / investment).toFixed(1);
+
+                const row = `
+                    <tr class="hover:bg-blue-50 transition border-b border-gray-100 last:border-0">
+                        <td class="px-4 py-3 font-medium text-slate-700">${formatMainCurrency(val)}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-blue-600">${formatMainCurrency(localVcPayout)}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-emerald-600 font-bold">${formatMainCurrency(f1Pay)}</td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="${mult < 1 ? 'text-red-500' : 'text-slate-600 bg-slate-100 px-2 py-1 rounded'} font-bold text-xs">${mult}x</span>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function calculateRisk() {
+            let score = 0;
+            if (document.getElementById('riskRatchet').checked) score += 30;
+            if (document.getElementById('riskDragAlong').checked) score += 20;
+            if (document.getElementById('riskLiquidation').checked) score += 20;
+
+            const liqPref = parseFloat(document.getElementById('liqPrefMult').value);
+            if (liqPref > 1) score += (liqPref - 1) * 20;
+            if (document.getElementById('participationType').value === 'participating') score += 15;
+
+            const panel = document.getElementById('riskScorePanel');
+            if (score < 20) {
+                panel.className = "mt-3 text-center text-xs font-bold py-1 px-2 rounded bg-green-100 text-green-800";
+                panel.innerText = "Niskie Ryzyko (Standard rynkowy)";
+            } else if (score < 50) {
+                panel.className = "mt-3 text-center text-xs font-bold py-1 px-2 rounded bg-yellow-100 text-yellow-800";
+                panel.innerText = "Średnie Ryzyko (Uważaj na zapisy)";
+            } else {
+                panel.className = "mt-3 text-center text-xs font-bold py-1 px-2 rounded bg-red-100 text-red-800";
+                panel.innerText = "WYSOKIE RYZYKO (Toksyczne Warunki)";
+            }
+        }
+
+        function saveData() {
+            const data = {
+                f1Share: document.getElementById('f1Share').value,
+                f2Share: document.getElementById('f2Share').value,
+                f3Share: document.getElementById('f3Share').value,
+                f1Name: document.getElementById('f1Name').value,
+                f2Name: document.getElementById('f2Name').value,
+                f3Name: document.getElementById('f3Name').value,
+                investment: document.getElementById('investment').value,
+                preMoney: document.getElementById('preMoney').value,
+                investorShareInput: document.getElementById('investorShareInput').value,
+                liqPrefMult: document.getElementById('liqPrefMult').value,
+                participationType: document.getElementById('participationType').value,
+                participationCap: document.getElementById('participationCap').value,
+                futureDilution: document.getElementById('futureDilution').value,
+                exitManualInput: document.getElementById('exitManualInput').value,
+                monthsToExit: document.getElementById('monthsToExit').value,
+                riskRatchet: document.getElementById('riskRatchet').checked,
+                mainCurrency: document.getElementById('mainCurrency').value
+            };
+            localStorage.setItem('vcProData', JSON.stringify(data));
+            const btn = document.getElementById('saveBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "Zapisano!";
+            btn.classList.add('bg-green-600');
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.remove('bg-green-600');
+            }, 2000);
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('vcProData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                // Load inputs safety
+                ['f1Share', 'f2Share', 'f3Share', 'f1Name', 'f2Name', 'f3Name',
+                    'investment', 'preMoney', 'investorShareInput', 'liqPrefMult',
+                    'participationType', 'participationCap', 'exitManualInput', 'monthsToExit', 'mainCurrency'
+                ].forEach(id => {
+                    if (data[id] !== undefined) document.getElementById(id).value = data[id];
+                });
+
+                if (data.futureDilution) {
+                    document.getElementById('futureDilution').value = data.futureDilution;
+                    updateRangeVal('futureDilutionVal', data.futureDilution);
+                }
+                if (data.riskRatchet !== undefined) document.getElementById('riskRatchet').checked = data.riskRatchet;
+
+                // Sync slider with loaded manual input
+                document.getElementById('exitSlider').value = document.getElementById('exitManualInput').value || 10000000;
+            }
+            validateCapTable();
+            recalcRound('pre'); // Init calculate
+        }
+
+        function resetData() {
+            if (confirm("Czy na pewno chcesz zresetować wszystkie dane?")) {
+                localStorage.removeItem('vcProData');
+                location.reload();
+            }
+        }
+
+        window.onload = loadData;
+    </script>
+</body>
+
+</html>
