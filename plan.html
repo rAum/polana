@@ -672,7 +672,6 @@
                     <option value="04 IwB">04 IwB</option>
                     <option value="05 IwB" selected="selected">05 IwB</option>
                     <option value="06 IwB">06 IwB</option>
-                    <option value="Dzień">Dzień</option>
                 </select>
                 <button id="resetFilterBtn" class="reset-filter" style="display: inline-block;">Wyczyść filtr</button>
             </div>
@@ -2495,7 +2494,7 @@
                     }
 
                     const groupName = cells[groupColIdx].innerText.trim();
-                    if (!groupName || groupName === "Grupa") return;
+                    if (!groupName || groupName === "Grupa" || groupName === "Dzień") return;
 
                     let currentVisualCol = 2;
 
