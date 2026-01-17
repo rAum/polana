@@ -18,9 +18,8 @@
             startup: {
                 ready: () => {
                     MathJax.startup.defaultReady();
-                    // Wymuś przeliczenie po załadowaniu, aby upewnić się, że wszystko wygląda dobrze
                     if (window.matrixApp) window.matrixApp.calc();
-                    if (window.entropyApp) window.entropyApp.calc();
+                    if (window.entropyApp) window.entropyApp.init();
                 }
             }
         };
@@ -33,17 +32,17 @@
         .matrix-input { 
             @apply w-full h-full text-center text-2xl font-bold bg-transparent outline-none text-slate-700 focus:bg-blue-50 transition-colors;
         }
-        
         .matrix-cell {
             @apply border border-slate-300 bg-white relative h-24 w-full flex flex-col justify-center items-center shadow-sm;
         }
-        
         .tag-corner {
             @apply absolute bottom-1 right-2 text-[10px] font-bold text-slate-400 uppercase pointer-events-none;
         }
-
         .ent-input {
-            @apply w-24 p-2 text-center border border-slate-300 rounded font-bold text-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all;
+            @apply w-16 p-2 text-center border border-slate-300 rounded font-bold text-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all text-sm;
+        }
+        .class-badge {
+            @apply px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border;
         }
     </style>
 </head>
@@ -78,8 +77,7 @@
             </div>
 
             <div class="p-6 grid grid-cols-1 xl:grid-cols-12 gap-8">
-                
-                <!-- LEWA: INPUT DANYCH (5 kolumn) -->
+                <!-- LEWA: INPUT DANYCH -->
                 <div class="xl:col-span-5">
                     <div class="mb-4 flex justify-between items-end">
                         <span class="text-xs font-bold text-slate-400 uppercase">Wprowadź liczebności</span>
@@ -88,10 +86,7 @@
 
                     <!-- Siatka Macierzy -->
                     <div class="grid grid-cols-[auto_1fr_1fr] gap-1 text-sm select-none">
-                        <!-- Pusty róg -->
                         <div></div>
-                        
-                        <!-- Headers Kolumn -->
                         <div class="text-center font-bold bg-blue-50 text-blue-800 py-2 rounded-t border border-blue-100 flex flex-col justify-center h-12">
                             <span>Przewidywana</span>
                             <span class="text-indigo-600 text-xs uppercase" id="col_label_a">Klasa A (+)</span>
@@ -101,7 +96,6 @@
                             <span class="text-slate-500 text-xs uppercase" id="col_label_b">Klasa B (-)</span>
                         </div>
 
-                        <!-- Wiersz 1 -->
                         <div class="flex flex-col items-center justify-center font-bold bg-slate-100 text-slate-600 px-2 rounded-l border border-slate-200 writing-mode-vertical min-w-[80px]">
                             <span>Rzeczywista</span>
                             <span class="text-indigo-600 text-[10px] uppercase mt-1" id="row_label_a">Klasa A (+)</span>
@@ -115,7 +109,6 @@
                             <span id="tag_ab" class="tag-corner text-red-400">FN</span>
                         </div>
 
-                        <!-- Wiersz 2 -->
                         <div class="flex flex-col items-center justify-center font-bold bg-slate-100 text-slate-600 px-2 rounded-l border border-slate-200 min-w-[80px]">
                             <span>Rzeczywista</span>
                             <span class="text-slate-500 text-[10px] uppercase mt-1" id="row_label_b">Klasa B (-)</span>
@@ -135,7 +128,7 @@
                     </div>
                 </div>
 
-                <!-- PRAWA: WYNIKI (7 kolumn) -->
+                <!-- PRAWA: WYNIKI -->
                 <div class="xl:col-span-7 bg-slate-50 rounded-xl border border-slate-200 p-6 flex flex-col justify-center">
                     <div id="matrix_results" class="space-y-6 text-sm">
                         <!-- MathJax injected here -->
@@ -145,58 +138,62 @@
         </section>
 
 
-        <!-- ==================== CZĘŚĆ 2: ENTROPIA ==================== -->
+        <!-- ==================== CZĘŚĆ 2: ENTROPIA (MULTI-CLASS) ==================== -->
         <section class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
-            <div class="bg-emerald-800 text-white px-6 py-4">
+            <div class="bg-emerald-800 text-white px-6 py-4 flex justify-between items-center">
                 <h2 class="font-bold text-lg flex items-center"><i class="fa-solid fa-tree mr-2"></i> Entropia & Zysk Informacyjny</h2>
+                <div class="text-[10px] bg-emerald-700 px-2 py-1 rounded">Obsługa wielu klas</div>
             </div>
 
             <div class="p-6 grid grid-cols-1 xl:grid-cols-2 gap-10">
                 
                 <!-- KONFIGURATOR -->
-                <div class="space-y-6">
+                <div class="space-y-8">
                     
-                    <!-- Krok 1 -->
-                    <div class="bg-emerald-50/50 p-5 rounded-xl border border-emerald-100">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold text-emerald-900 text-sm uppercase">1. Zbiór Główny (S)</h3>
-                            <button onclick="entropyApp.sumFromBranches()" class="text-[10px] bg-white border border-emerald-200 hover:bg-emerald-100 text-emerald-700 px-3 py-1 rounded transition">
-                                <i class="fa-solid fa-arrow-up"></i> Pobierz sumę z gałęzi
+                    <!-- Krok 0: Definicja Klas -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-bold text-slate-600 text-xs uppercase">Zmienna Decyzyjna (Klasy)</h3>
+                            <button onclick="entropyApp.addClass()" class="text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded font-bold transition">
+                                <i class="fa-solid fa-plus"></i> Dodaj klasę
                             </button>
                         </div>
-                        <div class="flex gap-6 items-center justify-center">
-                            <div class="flex flex-col items-center">
-                                <label class="text-[10px] font-bold text-slate-500 uppercase mb-1">Ilość (+)</label>
-                                <input type="number" id="s_pos" value="25" class="ent-input bg-white text-lg" oninput="entropyApp.calc()">
-                            </div>
-                            <div class="text-xl text-slate-300 font-light">/</div>
-                            <div class="flex flex-col items-center">
-                                <label class="text-[10px] font-bold text-slate-500 uppercase mb-1">Ilość (-)</label>
-                                <input type="number" id="s_neg" value="75" class="ent-input bg-white text-lg" oninput="entropyApp.calc()">
-                            </div>
-                        </div>
-                        <div class="text-center mt-3 text-xs text-slate-400">
-                            Całkowite N = <span id="s_total" class="font-bold text-slate-600">100</span>
+                        <div id="classes_container" class="flex flex-wrap gap-2">
+                            <!-- Dynamiczne klasy -->
                         </div>
                     </div>
 
-                    <!-- Krok 2 -->
+                    <!-- Krok 1: Zbiór Główny -->
+                    <div class="bg-emerald-50/50 p-5 rounded-xl border border-emerald-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-emerald-900 text-sm uppercase">1. Korzeń (Zbiór S)</h3>
+                            <button onclick="entropyApp.sumFromBranches()" class="text-[10px] bg-white border border-emerald-200 hover:bg-emerald-100 text-emerald-700 px-3 py-1 rounded transition">
+                                <i class="fa-solid fa-arrow-up"></i> Sumuj z gałęzi
+                            </button>
+                        </div>
+                        
+                        <!-- Dynamiczne inputy dla S -->
+                        <div id="s_inputs_container" class="flex flex-wrap justify-center gap-4"></div>
+                        
+                        <div class="text-center mt-4 text-xs text-slate-400">
+                            Całkowite N = <span id="s_total" class="font-bold text-slate-600">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Krok 2: Gałęzie -->
                     <div>
                         <div class="flex justify-between items-center mb-2">
-                            <h3 class="font-bold text-slate-700 text-sm uppercase">2. Gałęzie (Atrybut A)</h3>
+                            <h3 class="font-bold text-slate-700 text-sm uppercase">2. Podział (Atrybut A)</h3>
                             <button onclick="entropyApp.addBranch()" class="text-xs bg-slate-800 text-white px-3 py-1 rounded hover:bg-slate-700 transition">
                                 <i class="fa-solid fa-plus"></i> Dodaj gałąź
                             </button>
                         </div>
                         
-                        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
                             <table class="w-full text-sm text-left">
                                 <thead class="bg-slate-100 text-slate-500 font-bold uppercase text-[10px]">
-                                    <tr>
-                                        <th class="px-4 py-2">Nazwa</th>
-                                        <th class="px-2 py-2 text-center text-emerald-600">Liczba (+)</th>
-                                        <th class="px-2 py-2 text-center text-red-500">Liczba (-)</th>
-                                        <th class="px-2 py-2 text-center">Usuń</th>
+                                    <tr id="branches_header">
+                                        <!-- Generowane dynamicznie -->
                                     </tr>
                                 </thead>
                                 <tbody id="branches_container"></tbody>
@@ -251,13 +248,11 @@
                 const rowB = document.getElementById('row_label_b');
 
                 if (target === 'A') {
-                    // A jest (+)
                     colA.innerHTML = 'Klasa A <span class="text-green-600">(+)</span>'; colA.className = "text-xs uppercase font-bold text-indigo-700";
                     colB.innerHTML = 'Klasa B <span class="text-red-400">(-)</span>';   colB.className = "text-xs uppercase text-slate-400";
                     rowA.innerHTML = 'Klasa A <span class="text-green-600">(+)</span>'; rowA.className = "text-[10px] uppercase font-bold text-indigo-700 mt-1";
                     rowB.innerHTML = 'Klasa B <span class="text-red-400">(-)</span>';   rowB.className = "text-[10px] uppercase text-slate-400 mt-1";
                 } else {
-                    // B jest (+)
                     colA.innerHTML = 'Klasa A <span class="text-red-400">(-)</span>';   colA.className = "text-xs uppercase text-slate-400";
                     colB.innerHTML = 'Klasa B <span class="text-green-600">(+)</span>'; colB.className = "text-xs uppercase font-bold text-indigo-700";
                     rowA.innerHTML = 'Klasa A <span class="text-red-400">(-)</span>';   rowA.className = "text-[10px] uppercase text-slate-400 mt-1";
@@ -271,11 +266,6 @@
             },
 
             calc: function() {
-                // Pobierz wartości z pól (układ stały: wiersze=rzeczywiste, kolumny=przewidywane)
-                // AA: Rzecz A, Przew A
-                // AB: Rzecz A, Przew B
-                // BA: Rzecz B, Przew A
-                // BB: Rzecz B, Przew B
                 const aa = parseInt(document.getElementById('cell_aa').value) || 0;
                 const ab = parseInt(document.getElementById('cell_ab').value) || 0;
                 const ba = parseInt(document.getElementById('cell_ba').value) || 0;
@@ -284,19 +274,15 @@
                 let TP, FN, FP, TN;
 
                 if (this.target === 'A') {
-                    // A jest (+). 
                     TP = aa; FN = ab;
                     FP = ba; TN = bb;
-
                     this.setTag('tag_aa', 'TP', 'green');
                     this.setTag('tag_ab', 'FN', 'red');
                     this.setTag('tag_ba', 'FP', 'red');
                     this.setTag('tag_bb', 'TN', 'green');
                 } else {
-                    // B jest (+).
                     TP = bb; FN = ba;
                     FP = ab; TN = aa;
-
                     this.setTag('tag_bb', 'TP', 'green');
                     this.setTag('tag_ba', 'FN', 'red');
                     this.setTag('tag_ab', 'FP', 'red');
@@ -306,15 +292,12 @@
                 const N = TP + FN + FP + TN;
                 document.getElementById('matrix_n_val').innerText = N;
 
-                // Metryki
                 const recall = (TP + FN) > 0 ? TP / (TP + FN) : 0; 
                 const specificity = (TN + FP) > 0 ? TN / (TN + FP) : 0;
                 const precision = (TP + FP) > 0 ? TP / (TP + FP) : 0; 
                 const npv = (TN + FN) > 0 ? TN / (TN + FN) : 0; 
                 const accuracy = N > 0 ? (TP + TN) / N : 0;
                 const f1 = (precision + recall) > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
-
-                // Kappa
                 const po = accuracy;
                 const pe = N > 0 ? ( ((TP+FN)*(TP+FP)) + ((FP+TN)*(FN+TN)) ) / (N*N) : 0;
                 const kappa = (1 - pe) !== 0 ? (po - pe) / (1 - pe) : 0;
@@ -322,50 +305,43 @@
                 const html = `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <strong class="text-blue-700 block mb-1">Czułość (Recall / TPR)</strong>
-                            <div class="text-xs text-slate-500 mb-1">Jak wiele (+) wykryliśmy?</div>
-                            $$ \\frac{TP}{TP+FN} = \\frac{${TP}}{${TP}+${FN}} = \\mathbf{${recall.toFixed(4)}} $$
+                            <strong class="text-blue-700 block mb-1">Czułość (Recall)</strong>
+                            $$ \\frac{TP}{TP+FN} = \\mathbf{${recall.toFixed(4)}} $$
                         </div>
                         <div>
                             <strong class="text-blue-700 block mb-1">Specyficzność (TNR)</strong>
-                            <div class="text-xs text-slate-500 mb-1">Jak wiele (-) odrzuciliśmy?</div>
-                            $$ \\frac{TN}{TN+FP} = \\frac{${TN}}{${TN}+${FP}} = \\mathbf{${specificity.toFixed(4)}} $$
+                            $$ \\frac{TN}{TN+FP} = \\mathbf{${specificity.toFixed(4)}} $$
                         </div>
                         <div>
-                            <strong class="text-blue-700 block mb-1">Precyzja (Precision / PPV)</strong>
-                            <div class="text-xs text-slate-500 mb-1">Ile z wykrytych (+) to prawda?</div>
-                            $$ \\frac{TP}{TP+FP} = \\frac{${TP}}{${TP}+${FP}} = \\mathbf{${precision.toFixed(4)}} $$
+                            <strong class="text-blue-700 block mb-1">Precyzja (Precision)</strong>
+                            $$ \\frac{TP}{TP+FP} = \\mathbf{${precision.toFixed(4)}} $$
                         </div>
                         <div>
                             <strong class="text-blue-700 block mb-1">NPV</strong>
-                            <div class="text-xs text-slate-500 mb-1">Pewność predykcji negatywnej</div>
-                            $$ \\frac{TN}{TN+FN} = \\frac{${TN}}{${TN}+${FN}} = \\mathbf{${npv.toFixed(4)}} $$
+                            $$ \\frac{TN}{TN+FN} = \\mathbf{${npv.toFixed(4)}} $$
                         </div>
                         <div>
                             <strong class="text-indigo-700 block mb-1">Dokładność (Accuracy)</strong>
-                            $$ \\frac{TP+TN}{N} = \\frac{${TP}+${TN}}{${N}} = \\mathbf{${accuracy.toFixed(4)}} $$
+                            $$ \\mathbf{${accuracy.toFixed(4)}} $$
                         </div>
                         <div>
                             <strong class="text-indigo-700 block mb-1">F1 Score</strong>
-                            <div class="text-xs text-slate-500 mb-1">Średnia harmoniczna Prec i Recall</div>
-                            $$ \\frac{2 \\cdot P \\cdot R}{P+R} = \\mathbf{${f1.toFixed(4)}} $$
+                            $$ \\mathbf{${f1.toFixed(4)}} $$
                         </div>
                     </div>
-                    
                     <div class="mt-6 pt-4 border-t border-slate-200">
                         <strong class="text-slate-700 block mb-1">Kappa Cohena ($\kappa$)</strong>
                         <div class="flex gap-4 text-xs text-slate-500 mb-2">
                             <span>$p_o = ${po.toFixed(4)}$</span>
                             <span>$p_e = ${pe.toFixed(4)}$</span>
                         </div>
-                        $$ \\kappa = \\frac{p_o - p_e}{1 - p_e} = \\frac{${po.toFixed(4)} - ${pe.toFixed(4)}}{1 - ${pe.toFixed(4)}} = \\mathbf{${kappa.toFixed(4)}} $$
+                        $$ \\kappa = \\frac{${po.toFixed(4)} - ${pe.toFixed(4)}}{1 - ${pe.toFixed(4)}} = \\mathbf{${kappa.toFixed(4)}} $$
                     </div>
                 `;
 
                 const out = document.getElementById('matrix_results');
                 out.innerHTML = html;
                 
-                // BEZPIECZNE WYWOŁANIE MATHJAX
                 if (window.MathJax && window.MathJax.typesetPromise) {
                     MathJax.typesetPromise([out]).catch(err => console.log('MathJax error:', err));
                 }
@@ -381,18 +357,100 @@
 
         // --- LOGIKA ENTROPII ---
         const entropyApp = {
+            classes: [
+                { id: 'pos', name: 'Tak (+)', color: 'text-green-600', val: 9 },
+                { id: 'neg', name: 'Nie (-)', color: 'text-red-500', val: 5 }
+            ],
             branches: [
-                { name: "Gałąź 1", pos: 10, neg: 40 },
-                { name: "Gałąź 2", pos: 15, neg: 35 }
+                { name: "Słonecznie", counts: [2, 3] },
+                { name: "Pochmurno", counts: [4, 0] },
+                { name: "Deszcz", counts: [3, 2] }
             ],
 
             init: function() {
+                this.renderClasses();
+                this.renderSInputs();
                 this.renderBranches();
                 this.calc();
             },
 
+            // --- Zarządzanie Klasami ---
+            addClass: function() {
+                const newId = 'c' + Date.now();
+                this.classes.push({ id: newId, name: 'Klasa ' + (this.classes.length + 1), color: 'text-blue-600', val: 0 });
+                // Dodaj 0 do każdej gałęzi dla nowej klasy
+                this.branches.forEach(b => b.counts.push(0));
+                
+                this.renderClasses();
+                this.renderSInputs();
+                this.renderBranches();
+                this.calc();
+            },
+
+            removeClass: function(idx) {
+                if (this.classes.length <= 1) return alert("Musisz mieć przynajmniej jedną klasę!");
+                this.classes.splice(idx, 1);
+                // Usuń licznik z gałęzi
+                this.branches.forEach(b => b.counts.splice(idx, 1));
+
+                this.renderClasses();
+                this.renderSInputs();
+                this.renderBranches();
+                this.calc();
+            },
+
+            updateClassName: function(idx, newName) {
+                this.classes[idx].name = newName;
+                this.renderSInputs(); // Odśwież labele
+                this.renderBranches(); // Odśwież nagłówek tabeli
+            },
+
+            renderClasses: function() {
+                const container = document.getElementById('classes_container');
+                container.innerHTML = this.classes.map((c, i) => `
+                    <div class="flex items-center bg-white border border-slate-200 rounded px-2 py-1 text-xs">
+                        <input type="text" value="${c.name}" onchange="entropyApp.updateClassName(${i}, this.value)" class="w-20 bg-transparent outline-none font-bold ${c.color}">
+                        ${this.classes.length > 2 ? `<button onclick="entropyApp.removeClass(${i})" class="ml-2 text-slate-300 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                    </div>
+                `).join('');
+            },
+
+            // --- Zbiór S ---
+            renderSInputs: function() {
+                const container = document.getElementById('s_inputs_container');
+                container.innerHTML = this.classes.map((c, i) => `
+                    <div class="flex flex-col items-center">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 truncate w-16 text-center" title="${c.name}">${c.name}</label>
+                        <input type="number" id="s_in_${i}" value="${c.val}" oninput="entropyApp.updateSVal(${i}, this.value)" class="ent-input bg-white text-lg">
+                    </div>
+                `).join('');
+            },
+
+            updateSVal: function(idx, val) {
+                this.classes[idx].val = parseInt(val) || 0;
+                this.calc();
+            },
+
+            sumFromBranches: function() {
+                // Reset S values
+                this.classes.forEach(c => c.val = 0);
+                
+                // Sum branches
+                this.branches.forEach(b => {
+                    b.counts.forEach((count, i) => {
+                        this.classes[i].val += count;
+                    });
+                });
+
+                this.renderSInputs();
+                this.calc();
+            },
+
+            // --- Gałęzie ---
             addBranch: function() {
-                this.branches.push({ name: `Gałąź ${this.branches.length + 1}`, pos: 0, neg: 0 });
+                // Stwórz nową gałąź z zerami dla każdej klasy
+                const newCounts = new Array(this.classes.length).fill(0);
+                this.branches.push({ name: `Gałąź ${this.branches.length + 1}`, counts: newCounts });
                 this.renderBranches();
                 this.calc();
             },
@@ -403,12 +461,27 @@
                 this.calc();
             },
 
-            updateBranch: function(idx, field, val) {
-                this.branches[idx][field] = val; 
+            updateBranchVal: function(branchIdx, classIdx, val) {
+                this.branches[branchIdx].counts[classIdx] = parseInt(val) || 0;
                 this.calc();
+            },
+            
+            updateBranchName: function(branchIdx, val) {
+                this.branches[branchIdx].name = val;
+                this.calc(); // Tylko dla odświeżenia wzorów jeśli nazwa jest używana
             },
 
             renderBranches: function() {
+                // Header
+                const thead = document.getElementById('branches_header');
+                let headerHTML = `<th class="px-4 py-2">Nazwa Gałęzi</th>`;
+                this.classes.forEach(c => {
+                    headerHTML += `<th class="px-2 py-2 text-center ${c.color}">${c.name}</th>`;
+                });
+                headerHTML += `<th class="px-2 py-2 text-center">Usuń</th>`;
+                thead.innerHTML = headerHTML;
+
+                // Body
                 const tbody = document.getElementById('branches_container');
                 tbody.innerHTML = '';
                 
@@ -418,58 +491,49 @@
                 }
                 document.getElementById('branches_empty').classList.add('hidden');
 
-                this.branches.forEach((b, i) => {
+                this.branches.forEach((b, bIdx) => {
                     const tr = document.createElement('tr');
                     tr.className = "border-b border-slate-100 last:border-0 hover:bg-slate-50";
+                    
+                    let inputsHTML = '';
+                    b.counts.forEach((count, cIdx) => {
+                        inputsHTML += `
+                            <td class="px-2 py-2 text-center">
+                                <input type="number" value="${count}" class="ent-input w-14 bg-white" oninput="entropyApp.updateBranchVal(${bIdx}, ${cIdx}, this.value)">
+                            </td>
+                        `;
+                    });
+
                     tr.innerHTML = `
                         <td class="px-4 py-2">
-                            <input type="text" value="${b.name}" class="bg-transparent border-b border-transparent focus:border-blue-400 outline-none w-full font-medium text-slate-700" onchange="entropyApp.updateBranch(${i}, 'name', this.value)">
+                            <input type="text" value="${b.name}" class="bg-transparent border-b border-transparent focus:border-blue-400 outline-none w-full font-medium text-slate-700" onchange="entropyApp.updateBranchName(${bIdx}, this.value)">
                         </td>
+                        ${inputsHTML}
                         <td class="px-2 py-2 text-center">
-                            <input type="number" value="${b.pos}" class="ent-input w-16 bg-white text-green-600" oninput="entropyApp.updateBranch(${i}, 'pos', parseInt(this.value)||0)">
-                        </td>
-                        <td class="px-2 py-2 text-center">
-                            <input type="number" value="${b.neg}" class="ent-input w-16 bg-white text-red-500" oninput="entropyApp.updateBranch(${i}, 'neg', parseInt(this.value)||0)">
-                        </td>
-                        <td class="px-2 py-2 text-center">
-                            <button onclick="entropyApp.removeBranch(${i})" class="text-slate-400 hover:text-red-500 transition"><i class="fa-solid fa-trash"></i></button>
+                            <button onclick="entropyApp.removeBranch(${bIdx})" class="text-slate-400 hover:text-red-500 transition"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     `;
                     tbody.appendChild(tr);
                 });
             },
 
-            sumFromBranches: function() {
-                let sPos = 0, sNeg = 0;
-                this.branches.forEach(b => { sPos += (parseInt(b.pos)||0); sNeg += (parseInt(b.neg)||0); });
-                document.getElementById('s_pos').value = sPos;
-                document.getElementById('s_neg').value = sNeg;
-                this.calc();
-            },
-
-            calcEntropyFormula: function(pos, neg, label) {
-                const sum = pos + neg;
+            // --- Obliczenia ---
+            calcEntropyFormula: function(counts, label) {
+                const sum = counts.reduce((a, b) => a + b, 0);
                 if (sum === 0) return { val: 0, html: `<span>$H(${label}) = 0$</span>` };
 
                 let val = 0;
                 let stepsStr = [];
                 let numericStr = [];
 
-                // P(+)
-                const pPos = pos / sum;
-                if (pPos > 0) {
-                    val -= pPos * Math.log2(pPos);
-                    stepsStr.push(`\\frac{${pos}}{${sum}} \\log_2(\\frac{${pos}}{${sum}})`);
-                    numericStr.push(`${pPos.toFixed(3)} \\cdot ${Math.log2(pPos).toFixed(3)}`);
-                }
-
-                // P(-)
-                const pNeg = neg / sum;
-                if (pNeg > 0) {
-                    val -= pNeg * Math.log2(pNeg);
-                    stepsStr.push(`\\frac{${neg}}{${sum}} \\log_2(\\frac{${neg}}{${sum}})`);
-                    numericStr.push(`${pNeg.toFixed(3)} \\cdot ${Math.log2(pNeg).toFixed(3)}`);
-                }
+                counts.forEach(c => {
+                    const p = c / sum;
+                    if (p > 0) {
+                        val -= p * Math.log2(p);
+                        stepsStr.push(`\\frac{${c}}{${sum}} \\log_2(\\frac{${c}}{${sum}})`);
+                        numericStr.push(`${p.toFixed(3)} \\cdot ${Math.log2(p).toFixed(3)}`);
+                    }
+                });
 
                 const html = `
                     <div class="mb-4">
@@ -486,27 +550,27 @@
             },
 
             calc: function() {
-                const sPos = parseInt(document.getElementById('s_pos').value) || 0;
-                const sNeg = parseInt(document.getElementById('s_neg').value) || 0;
-                document.getElementById('s_total').innerText = sPos + sNeg;
+                // Zbiór S
+                const sCounts = this.classes.map(c => c.val);
+                const sTotal = sCounts.reduce((a, b) => a + b, 0);
+                document.getElementById('s_total').innerText = sTotal;
 
-                // 1. Entropia S
-                const resS = this.calcEntropyFormula(sPos, sNeg, "S");
+                const resS = this.calcEntropyFormula(sCounts, "S");
 
-                // 2. Entropia Gałęzi
+                // Gałęzie
                 let weightedH = 0;
                 let branchesHtml = "";
                 let weightedFormulaParts = [];
 
                 this.branches.forEach((b, i) => {
-                    const total = (parseInt(b.pos)||0) + (parseInt(b.neg)||0);
+                    const bTotal = b.counts.reduce((a, x) => a + x, 0);
                     
-                    if (total > 0) {
-                        const resB = this.calcEntropyFormula(b.pos, b.neg, b.name);
-                        const weight = total / (sPos + sNeg);
+                    if (bTotal > 0) {
+                        const resB = this.calcEntropyFormula(b.counts, b.name);
+                        const weight = bTotal / sTotal;
                         
                         weightedH += weight * resB.val;
-                        weightedFormulaParts.push(`\\frac{${total}}{${sPos+sNeg}}(${resB.val.toFixed(4)})`);
+                        weightedFormulaParts.push(`\\frac{${bTotal}}{${sTotal}}(${resB.val.toFixed(4)})`);
                         
                         branchesHtml += `<div class="pl-4 border-l-2 border-emerald-100 mb-2">${resB.html}</div>`;
                     }
@@ -539,7 +603,6 @@
                     </div>
                 `;
 
-                // BEZPIECZNE WYWOŁANIE MATHJAX
                 if (window.MathJax && window.MathJax.typesetPromise) {
                     MathJax.typesetPromise([out]).catch(err => console.log('MathJax error:', err));
                 }
