@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Egzaminacyjny - Metryki & ID3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Konfiguracja MathJax -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$']]
+            },
+            svg: { fontCache: 'global' },
+            startup: {
+                ready: () => {
+                    MathJax.startup.defaultReady();
+                    if (window.matrixApp) window.matrixApp.calc();
+                    if (window.entropyApp) window.entropyApp.init();
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f1f5f9; }
+        
+        .matrix-input { 
+            width: 100%; height: 100%; text-align: center; font-size: 1.5rem; font-weight: 800; background: transparent; outline: none; color: #1e293b;
+        }
+        .matrix-cell {
+            border: 2px solid #e2e8f0; background-color: white; position: relative; height: 6rem; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.2s; border-radius: 0.5rem;
+        }
+        .matrix-cell:hover { border-color: #3b82f6; background-color: #f8fafc; }
+        
+        .tag-badge {
+            position: absolute; top: 0.25rem; right: 0.5rem; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; pointer-events: none; padding: 0.1rem 0.4rem; border-radius: 0.25rem;
+        }
+
+        .ent-input {
+            width: 3.5rem; padding: 0.4rem; text-align: center; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-weight: 700; outline: none; transition: all 0.2s; font-size: 0.875rem;
+        }
+
+        /* Tooltip Styles */
+        .tooltip-trigger { position: relative; cursor: help; border-bottom: 1px dotted #94a3b8; }
+        .tooltip-content {
+            visibility: hidden; opacity: 0; position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%);
+            width: 16rem; padding: 0.75rem; background: #1e293b; color: white; font-size: 0.75rem; border-radius: 0.5rem;
+            z-index: 50; transition: all 0.2s; text-align: center; pointer-events: none;
+        }
+        .tooltip-trigger:hover .tooltip-content { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(-5px); }
+        
+        .metric-card { @apply bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2; }
+        .metric-title { @apply text-xs font-black uppercase tracking-widest text-slate-400 flex justify-between items-center; }
+    </style>
+</head>
+<body class="pb-20 text-slate-800">
+
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <div class="bg-blue-600 text-white p-2 rounded-lg shadow-lg shadow-blue-200"><i class="fa-solid fa-microchip"></i></div>
+            <span class="font-bold text-lg tracking-tight text-slate-800 uppercase">Stat<span class="text-blue-600">Master</span> v2</span>
+        </div>
+        <div class="flex gap-4 items-center">
+             <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                <span class="text-[10px] uppercase font-black text-slate-500 px-2">Cel Klasyfikacji (TP):</span>
+                <button onclick="matrixApp.setTarget('A')" id="btn_target_a" class="px-4 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs transition-all shadow-sm">Klasa A (+)</button>
+                <button onclick="matrixApp.setTarget('B')" id="btn_target_b" class="px-4 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 font-bold text-xs transition-all">Klasa B (+)</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-4 space-y-10 mt-6">
+
+        <!-- ==================== MACIERZ POMYŁEK ==================== -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <div class="lg:col-span-5">
+                <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="font-black text-xs uppercase text-slate-400 tracking-[0.2em]">Macierz Pomyłek</h2>
+                        <button onclick="matrixApp.clear()" class="text-[10px] text-red-500 hover:text-red-700 font-bold uppercase transition">Wyczyść</button>
+                    </div>
+
+                    <div class="grid grid-cols-[auto_1fr_1fr] gap-3">
+                        <div></div>
+                        <div class="text-center">
+                            <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Przewidywana</span>
+                            <div class="bg-blue-600 text-white py-2 rounded-t-lg font-bold text-xs shadow-sm uppercase tracking-wider" id="col_label_a">Klasa A (+)</div>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Przewidywana</span>
+                            <div class="bg-slate-700 text-white py-2 rounded-t-lg font-bold text-xs shadow-sm uppercase tracking-wider" id="col_label_b">Klasa B (-)</div>
+                        </div>
+
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-[9px] font-black text-slate-400 uppercase mb-2 [writing-mode:vertical-lr] rotate-180">Rzeczywista</span>
+                            <div class="bg-blue-100 text-blue-800 font-bold px-3 py-6 rounded-l-lg text-xs uppercase shadow-inner" id="row_label_a">A (+)</div>
+                        </div>
+                        <div class="matrix-cell border-green-200">
+                            <input type="number" id="cell_aa" value="25" class="matrix-input" oninput="matrixApp.calc()">
+                            <span id="tag_aa" class="tag-badge bg-green-100 text-green-700">TP</span>
+                        </div>
+                        <div class="matrix-cell border-red-100">
+                            <input type="number" id="cell_ab" value="75" class="matrix-input" oninput="matrixApp.calc()">
+                            <span id="tag_ab" class="tag-badge bg-red-50 text-red-600">FN</span>
+                        </div>
+
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="bg-slate-200 text-slate-600 font-bold px-3 py-6 rounded-l-lg text-xs uppercase shadow-inner" id="row_label_b">B (-)</div>
+                        </div>
+                        <div class="matrix-cell border-red-100">
+                            <input type="number" id="cell_ba" value="50" class="matrix-input" oninput="matrixApp.calc()">
+                            <span id="tag_ba" class="tag-badge bg-red-50 text-red-600">FP</span>
+                        </div>
+                        <div class="matrix-cell border-green-200">
+                            <input type="number" id="cell_bb" value="12" class="matrix-input" oninput="matrixApp.calc()">
+                            <span id="tag_bb" class="tag-badge bg-green-100 text-green-700">TN</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-center text-[10px] font-bold text-slate-400 uppercase">
+                        Suma N = <span id="matrix_n_val" class="text-slate-800 text-sm ml-2">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-4" id="matrix_results">
+                <!-- Generowane przez JS -->
+            </div>
+        </div>
+
+        <!-- ==================== ENTROPIA ==================== -->
+        <section class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+            <div class="bg-slate-900 text-white px-8 py-4 flex justify-between items-center">
+                <h2 class="font-bold text-sm uppercase tracking-[0.2em] flex items-center">
+                    <i class="fa-solid fa-tree mr-3 text-emerald-400"></i> Entropia & Zysk Informacyjny
+                </h2>
+                <button onclick="entropyApp.addClass()" class="text-[10px] bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-black uppercase transition">Dodaj Klasę</button>
+            </div>
+
+            <div class="p-8 grid grid-cols-1 xl:grid-cols-12 gap-10">
+                
+                <div class="xl:col-span-5 space-y-8">
+                    <div id="classes_container" class="flex flex-wrap gap-2"></div>
+
+                    <div class="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100 shadow-inner text-center">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-black text-emerald-800 text-[10px] uppercase tracking-widest">Zbiór Nadrzędny (S)</h3>
+                            <button onclick="entropyApp.sumFromBranches()" class="text-[9px] bg-white border border-emerald-200 px-3 py-1.5 rounded-lg font-bold text-emerald-600 shadow-sm">Suma z gałęzi</button>
+                        </div>
+                        <div id="s_inputs_container" class="flex flex-wrap gap-6 justify-center"></div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-black text-slate-500 text-[10px] uppercase tracking-widest">Atrybuty / Gałęzie (H)</h3>
+                            <button onclick="entropyApp.addBranch()" class="text-[9px] bg-slate-800 text-white px-4 py-1.5 rounded-lg font-bold uppercase">Dodaj Gałąź</button>
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                            <table class="w-full text-[11px]">
+                                <thead class="bg-slate-50 text-slate-400 font-bold uppercase border-b">
+                                    <tr id="branches_header"></tr>
+                                </thead>
+                                <tbody id="branches_container"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="xl:col-span-7 bg-slate-50 rounded-2xl border border-slate-200 p-8 overflow-y-auto max-h-[700px]" id="entropy_output">
+                    <!-- MathJax -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const matrixApp = {
+            target: 'A',
+            setTarget: function(t) {
+                this.target = t;
+                const btnA = document.getElementById('btn_target_a');
+                const btnB = document.getElementById('btn_target_b');
+                const active = "px-4 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs transition-all shadow-sm";
+                const inactive = "px-4 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 font-bold text-xs transition-all";
+                btnA.className = t === 'A' ? active : inactive;
+                btnB.className = t === 'B' ? active : inactive;
+                this.updateLabels();
+                this.calc();
+            },
+            updateLabels: function() {
+                const names = this.target === 'A' ? ['Klasa A (+)', 'Klasa B (-)'] : ['Klasa A (-)', 'Klasa B (+)'];
+                document.getElementById('col_label_a').innerText = names[0];
+                document.getElementById('col_label_b').innerText = names[1];
+                document.getElementById('row_label_a').innerText = names[0];
+                document.getElementById('row_label_b').innerText = names[1];
+            },
+            clear: function() {
+                ['cell_aa','cell_ab','cell_ba','cell_bb'].forEach(id => document.getElementById(id).value = 0);
+                this.calc();
+            },
+            calc: function() {
+                const aa = parseInt(document.getElementById('cell_aa').value) || 0;
+                const ab = parseInt(document.getElementById('cell_ab').value) || 0;
+                const ba = parseInt(document.getElementById('cell_ba').value) || 0;
+                const bb = parseInt(document.getElementById('cell_bb').value) || 0;
+                let TP, FN, FP, TN;
+
+                if (this.target === 'A') {
+                    TP=aa; FN=ab; FP=ba; TN=bb;
+                    this.setTag('tag_aa','TP','green'); this.setTag('tag_ab','FN','red');
+                    this.setTag('tag_ba','FP','red');   this.setTag('tag_bb','TN','green');
+                } else {
+                    TP=bb; FN=ba; FP=ab; TN=aa;
+                    this.setTag('tag_bb','TP','green'); this.setTag('tag_ba','FN','red');
+                    this.setTag('tag_ab','FP','red');   this.setTag('tag_aa','TN','green');
+                }
+
+                const N = TP+FN+FP+TN;
+                document.getElementById('matrix_n_val').innerText = N;
+
+                const R = (TP+FN)>0 ? TP/(TP+FN) : 0;
+                const Swoj = (TN+FP)>0 ? TN/(TN+FP) : 0;
+                const P = (TP+FP)>0 ? TP/(TP+FP) : 0;
+                const Acc = N>0 ? (TP+TN)/N : 0;
+                const F1 = (P+R)>0 ? 2*(P*R)/(P+R) : 0;
+                const po = Acc;
+                const pe = N>0 ? (((TP+FN)*(TP+FP)) + ((FP+TN)*(FN+TN)))/(N*N) : 0;
+                const K = (1-pe)!==0 ? (po-pe)/(1-pe) : 0;
+
+                const results = [
+                    { label: 'Czułość (Recall)', desc: 'Zdolność wykrywania stanu faktycznie dodatniego.', formula: `Recall = \\frac{TP}{TP+FN} = \\frac{${TP}}{${TP}+${FN}}`, val: R },
+                    { label: 'Swoistość (Specificity)', desc: 'Zdolność poprawnego odrzucania klasy ujemnej.', formula: `Swoistość = \\frac{TN}{TN+FP} = \\frac{${TN}}{${TN}+${FP}}`, val: Swoj },
+                    { label: 'Precyzja (Precision)', desc: 'Wiarygodność pozytywnej diagnozy modelu.', formula: `Precision = \\frac{TP}{TP+FP} = \\frac{${TP}}{${TP}+${FP}}`, val: P },
+                    { label: 'Dokładność (Accuracy)', desc: 'Procent wszystkich poprawnych decyzji.', formula: `Acc = \\frac{TP+TN}{N} = \\frac{${TP}+${TN}}{${N}}`, val: Acc },
+                    { label: 'F1 Score', desc: 'Średnia harmoniczna precyzji i czułości.', formula: `F1 = 2 \\cdot \\frac{P \\cdot R}{P+R} = 2 \\cdot \\frac{${P.toFixed(2)} \\cdot ${R.toFixed(2)}}{${P.toFixed(2)}+${R.toFixed(2)}}`, val: F1 },
+                    { label: 'Kappa Cohena', desc: 'Zgodność skorygowana o przypadek.', formula: `\\kappa = \\frac{p_o-p_e}{1-p_e} = \\frac{${po.toFixed(2)}-${pe.toFixed(2)}}{1-${pe.toFixed(2)}}`, val: K }
+                ];
+
+                const container = document.getElementById('matrix_results');
+                container.innerHTML = results.map(m => `
+                    <div class="metric-card">
+                        <div class="metric-title">
+                            <span>${m.label}</span>
+                            <div class="tooltip-trigger inline-block">
+                                <i class="fa-regular fa-circle-question text-slate-300"></i>
+                                <div class="tooltip-content normal-case font-normal">${m.desc}</div>
+                            </div>
+                        </div>
+                        <div class="text-[14px] text-slate-800 font-medium">$$ ${m.formula} = \\mathbf{${m.val.toFixed(4)}} $$</div>
+                    </div>
+                `).join('');
+
+                if (window.MathJax && window.MathJax.typesetPromise) MathJax.typesetPromise([container]);
+            },
+            setTag: function(id, text, color) {
+                const el = document.getElementById(id);
+                el.innerText = text;
+                el.className = `tag-badge bg-${color === 'green' ? 'green-100 text-green-700' : 'red-50 text-red-600'}`;
+            }
+        };
+
+        const entropyApp = {
+            classes: [{ name: 'Klasa A (+)', val: 9 }, { name: 'Klasa B (-)', val: 5 }],
+            branches: [{ name: 'Gałąź 1', counts: [2, 3] }, { name: 'Gałąź 2', counts: [4, 0] }, { name: 'Gałąź 3', counts: [3, 2] }],
+            init: function() { this.render(); this.calc(); },
+            addClass: function() {
+                this.classes.push({ name: 'Klasa '+(this.classes.length+1), val: 0 });
+                this.branches.forEach(b => b.counts.push(0));
+                this.render(); this.calc();
+            },
+            removeClass: function(idx) {
+                if (this.classes.length > 1) { this.classes.splice(idx,1); this.branches.forEach(b => b.counts.splice(idx,1)); this.render(); this.calc(); }
+            },
+            addBranch: function() {
+                this.branches.push({ name: 'Nowa Gałąź', counts: new Array(this.classes.length).fill(0) });
+                this.render(); this.calc();
+            },
+            removeBranch: function(idx) { this.branches.splice(idx,1); this.render(); this.calc(); },
+            render: function() {
+                document.getElementById('classes_container').innerHTML = this.classes.map((c, i) => `
+                    <div class="flex items-center bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-[10px] font-black">
+                        <input type="text" value="${c.name}" onchange="entropyApp.classes[${i}].name=this.value; entropyApp.render(); entropyApp.calc();" class="w-20 outline-none bg-transparent">
+                        <button onclick="entropyApp.removeClass(${i})" class="ml-2 text-slate-300 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                `).join('');
+                document.getElementById('s_inputs_container').innerHTML = this.classes.map((c, i) => `
+                    <div class="flex flex-col items-center">
+                        <label class="text-[9px] font-black text-slate-400 mb-1.5 uppercase">${c.name}</label>
+                        <input type="number" value="${c.val}" oninput="entropyApp.classes[${i}].val=parseInt(this.value)||0; entropyApp.calc();" class="ent-input text-lg py-2">
+                    </div>
+                `).join('');
+                document.getElementById('branches_header').innerHTML = `<th class="px-4 py-3 text-left">Nazwa Atrybutu</th>` + 
+                    this.classes.map(c => `<th class="text-center">${c.name}</th>`).join('') + `<th class="text-center">H</th><th class="w-10"></th>`;
+                document.getElementById('branches_container').innerHTML = this.branches.map((b, bi) => `
+                    <tr class="border-b hover:bg-slate-50">
+                        <td class="px-4 py-3"><input type="text" value="${b.name}" onchange="entropyApp.branches[${bi}].name=this.value; entropyApp.calc();" class="outline-none bg-transparent w-full font-bold"></td>
+                        ${b.counts.map((c, ci) => `<td class="text-center px-1"><input type="number" value="${c}" oninput="entropyApp.branches[${bi}].counts[${ci}]=parseInt(this.value)||0; entropyApp.calc();" class="ent-input w-12 py-1"></td>`).join('')}
+                        <td class="text-center font-black text-blue-600" id="be_${bi}">0.000</td>
+                        <td class="text-center"><button onclick="entropyApp.removeBranch(${bi})" class="text-slate-200 hover:text-red-500 transition px-2"><i class="fa-solid fa-trash-can"></i></button></td>
+                    </tr>
+                `).join('');
+            },
+            sumFromBranches: function() {
+                this.classes.forEach((c, i) => { c.val = this.branches.reduce((sum, b) => sum + b.counts[i], 0); });
+                this.render(); this.calc();
+            },
+            calculateEntropy: function(counts, label) {
+                const total = counts.reduce((a,b)=>a+b, 0);
+                if (total === 0) return { val: 0, html: `$$ H(${label}) = 0 $$` };
+                let val = 0, steps = [];
+                counts.forEach(c => {
+                    const p = c/total;
+                    if (p > 0) {
+                        val -= p * Math.log2(p);
+                        steps.push(`\\frac{${c}}{${total}} \\log_2(\\frac{${c}}{${total}})`);
+                    }
+                });
+                return { val, html: `$$ H(${label}) = -[ ${steps.join(' + ')} ] = \\mathbf{${val.toFixed(4)}} $$` };
+            },
+            calc: function() {
+                const sCounts = this.classes.map(c => c.val);
+                const sTotal = sCounts.reduce((a,b)=>a+b, 0);
+                const hS = this.calculateEntropy(sCounts, "S");
+                let weightedH = 0, hParts = [], branchLogs = "";
+                this.branches.forEach((b, i) => {
+                    const bTotal = b.counts.reduce((a,x)=>a+x, 0);
+                    const resB = this.calculateEntropy(b.counts, b.name);
+                    if (document.getElementById(`be_${i}`)) document.getElementById(`be_${i}`).innerText = resB.val.toFixed(3);
+                    if (bTotal > 0 && sTotal > 0) {
+                        weightedH += (bTotal/sTotal) * resB.val;
+                        hParts.push(`\\frac{${bTotal}}{${sTotal}}(${resB.val.toFixed(3)})`);
+                        branchLogs += `<div class="mb-3 text-xs text-slate-500 pl-4 border-l-2 border-emerald-100"><b>${b.name}</b>: ${resB.html}</div>`;
+                    }
+                });
+                const ig = hS.val - weightedH;
+                const out = document.getElementById('entropy_output');
+                out.innerHTML = `
+                    <div class="mb-6 p-4 bg-emerald-100/30 rounded-2xl border border-emerald-100 shadow-sm">
+                        <strong class="text-[11px] uppercase text-emerald-800 tracking-widest block mb-4">1. Entropia Bazowa Entropy(S)</strong>
+                        ${hS.html}
+                    </div>
+                    <div class="mb-6">
+                        <strong class="text-[11px] uppercase text-slate-400 tracking-widest block mb-4">2. Wyliczenia dla podzbiorów (H)</strong>
+                        ${branchLogs || '<p class="text-[10px] italic text-slate-400">Dodaj dane w gałęziach.</p>'}
+                    </div>
+                    <div class="mb-6 p-4 bg-blue-100/30 rounded-2xl border border-blue-100 shadow-sm">
+                        <strong class="text-[11px] uppercase text-blue-800 tracking-widest block mb-4">3. Średnia Ważona Entropy(H)</strong>
+                        $$ Entropy(H) = ${hParts.join(' + ') || '0'} = \\mathbf{${weightedH.toFixed(4)}} $$
+                    </div>
+                    <div class="p-6 bg-gradient-to-r from-amber-400 to-orange-500 rounded-3xl text-white shadow-xl text-center relative overflow-hidden">
+                        <i class="fa-solid fa-bolt absolute -right-4 -bottom-4 text-8xl opacity-10"></i>
+                        <strong class="text-[12px] uppercase font-black tracking-[0.3em] block mb-2">Zysk Informacyjny IG(S, A)</strong>
+                        <div class="text-2xl font-black">$$ IG = ${hS.val.toFixed(4)} - ${weightedH.toFixed(4)} = \\mathbf{${ig.toFixed(4)}} $$</div>
+                    </div>
+                `;
+                if (window.MathJax && window.MathJax.typesetPromise) MathJax.typesetPromise([out]);
+            }
+        };
+
+        window.onload = () => { matrixApp.calc(); entropyApp.init(); };
+    </script>
+</body>
+</html>
