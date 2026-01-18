@@ -311,7 +311,7 @@
                     { label: 'Swoistość (Specyfic.)', desc: 'TN / (TN+FP). Zdolność poprawnego odrzucania klasy ujemnej. Ile obiektów (-) odrzucono?', formula: `Spec = \\frac{${TN}}{${TN}+${FP}}`, val: S },
                     { label: 'Precyzja (Precision)', desc: 'TP / (TP+FP). Wiarygodność dodatniej diagnozy. Jeśli model mówi "Tak", jakie jest prawdopodobieństwo, że to prawda?', formula: `Prec = \\frac{${TP}}{${TP}+${FP}}`, val: P },
                     { label: 'Dokładność (Accuracy)', desc: '(TP+TN) / N. Ogólna trafność - stosunek wszystkich poprawnych decyzji do całości.', formula: `Acc = \\frac{${TP}+${TN}}{${N}}`, val: Acc },
-                    { label: 'F1 Score', desc: 'Średnia harmoniczna precyzji i czułości. Najlepsza miara przy niezbalansowanych klasach.', formula: `F1 = 2 \\cdot \\frac{${P.toFixed(2)} \\cdot ${R.toFixed(2)}}{${P.toFixed(2)}+${R.toFixed(2)}}`, val: F1 },
+                    //{ label: 'F1 Score', desc: 'Średnia harmoniczna precyzji i czułości. Najlepsza miara przy niezbalansowanych klasach.', formula: `F1 = 2 \\cdot \\frac{${P.toFixed(2)} \\cdot ${R.toFixed(2)}}{${P.toFixed(2)}+${R.toFixed(2)}}`, val: F1 },
                     { label: 'Kappa Cohena', desc: '(Po - Pe) / (1 - Pe). Zgodność skorygowana o prawdopodobieństwo trafienia przypadkiem.', formula: `\\kappa = \\frac{${po.toFixed(2)}-${pe.toFixed(2)}}{1-${pe.toFixed(2)}}`, val: K }
                 ];
 
